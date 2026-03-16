@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ClaimGuard AI — Dental Claim Denial Predictor',
+  title: 'Vindica — Dental Claim Denial Predictor',
   description: 'AI-powered dental insurance claim denial predictor and auto-appeal generator',
 };
 
