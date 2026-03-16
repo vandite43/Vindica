@@ -24,6 +24,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'REMINDER: Update RETROSPECTIVE.md now to log what you just did.'"
+          }
+        ]
+      }
     ]
   }
 }

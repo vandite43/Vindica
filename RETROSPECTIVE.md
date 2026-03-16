@@ -116,6 +116,18 @@
 
 ---
 
+### 2026-03-16 — Fix browser tab title
+
+- **app/layout.tsx** — changed `title` metadata from `'ClaimGuard AI — Dental Claim Denial Predictor'` to `'Vindica — Dental Claim Denial Predictor'`
+
+---
+
+### 2026-03-16 — Enforce retrospective update after every command
+
+- **.claude/settings.local.json** — added `Stop` hook that fires after every Claude response, echoing a reminder to update RETROSPECTIVE.md. Combined with the existing `UserPromptSubmit` hook (reads the file before each prompt), this creates a full read-on-start / write-on-finish loop.
+
+---
+
 ### 2026-03-16 — Login page cleanup & env cleanup
 
 - **app/(auth)/login/page.tsx** — removed demo credentials hint box (`Demo: demo@claimguard.ai / demo1234`), updated email input placeholder from `demo@claimguard.ai` to `you@example.com`
