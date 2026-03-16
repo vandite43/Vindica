@@ -93,8 +93,9 @@ export default function EditClaimPage({ params }: { params: Promise<{ id: string
     if (res.ok) {
       router.push(`/claims/${id}`);
     } else {
+      const data = await res.json().catch(() => ({}));
       setLoading(false);
-      alert('Failed to save changes.');
+      alert(`Failed to save: ${data.error || res.status}`);
     }
   }
 
