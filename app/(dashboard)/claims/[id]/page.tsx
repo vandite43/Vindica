@@ -45,26 +45,41 @@ interface DenialModalState {
 
 function RiskGauge({ score }: { score: number }) {
   const color = getRiskColor(score);
-  const rotation = (score / 100) * 180 - 90;
+  // Arc goes from 180° to 0° (left to right across the top semicircle)
+  const r = 54;
+  const cx = 70;
+  const cy = 70;
+  const circumference = Math.PI * r; // half circumference
+  const offset = circumference * (1 - score / 100);
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative w-32 h-16 overflow-hidden">
-        <div className="absolute inset-0 w-32 h-32 rounded-full border-8 border-gray-100" style={{ clipPath: 'inset(0 0 50% 0)' }} />
-        <div
-          className="absolute inset-0 w-32 h-32 rounded-full border-8"
-          style={{
-            borderColor: color,
-            clipPath: 'inset(0 0 50% 0)',
-            transform: `rotate(${rotation}deg)`,
-            transformOrigin: '50% 100%',
-            transition: 'transform 0.5s ease-out',
-          }}
-        />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-2xl font-bold" style={{ color }}>
-          {Math.round(score)}
+    <div className="flex flex-col items-center">
+      <div className="relative flex items-center justify-center">
+        <svg width="140" height="80" viewBox="0 0 140 80">
+          {/* Background track — full semicircle */}
+          <path
+            d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+            fill="none"
+            stroke="#E5E7EB"
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+          {/* Filled arc — score-proportional */}
+          <path
+            d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+            fill="none"
+            stroke={color}
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            style={{ transition: 'stroke-dashoffset 0.6s ease-out' }}
+          />
+        </svg>
+        <div className="absolute bottom-0 flex flex-col items-center">
+          <span className="text-3xl font-bold leading-none" style={{ color }}>{Math.round(score)}</span>
         </div>
       </div>
-      <div className="text-xs text-gray-500">out of 100</div>
+      <div className="text-xs text-gray-500 mt-1">out of 100</div>
     </div>
   );
 }
