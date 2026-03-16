@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?
+  practice      Practice?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Practice {
+  id            String    @id @default(cuid())
+  name          String
+  npi           String?
+  address       String?
+  state         String?
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  claims        Claim[]
+  createdAt     DateTime  @default(now())
+}
+
+model Claim {
+  id                String        @id @default(cuid())
+  practiceId        String
+  practice          Practice      @relation(fields: [practiceId], references: [id])
+  patientName       String
+  patientDob        DateTime
+  patientInsuranceId String
+  payerId           String
+  payerName         String
+  planType          String?
+  claimDate         DateTime
+  serviceDate       DateTime
+  cdtCodes          String[]
+  diagnosisCodes    String[]
+  totalAmount       Float
+  status            ClaimStatus   @default(PENDING)
+  submittedAt       DateTime?
+  denialRiskScore   Float?
+  riskLevel         RiskLevel?
+  aiAnalysis        Json?
+  flaggedIssues     String[]
+  suggestedCdtCodes String[]
+  deniedAt          DateTime?
+  denialReason      String?
+  denialCode        String?
+  appeal            Appeal?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model Appeal {
+  id              String        @id @default(cuid())
+  claimId         String        @unique
+  claim           Claim         @relation(fields: [claimId], references: [id])
+  letterContent   String        @db.Text
+  generatedAt     DateTime      @default(now())
+  status          AppealStatus  @default(DRAFT)
+  submittedAt     DateTime?
+  resolution      String?
+  resolvedAt      DateTime?
+  amountRecovered Float?
+  updatedAt       DateTime      @updatedAt
+}
+
+model Payer {
+  id              String    @id @default(cuid())
+  payerId         String    @unique
+  name            String
+  state           String?
+  denialRate      Float?
+  avgProcessDays  Int?
+  commonDenialReasons String[]
+  preferredCdtVariants Json?
+  requiresPreAuth  String[]
+  documentationQuirks String[]
+  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime  @default(now())
+}
+
+enum ClaimStatus {
+  DRAFT
+  PENDING
+  SUBMITTED
+  APPROVED
+  DENIED
+  APPEALING
+  APPEAL_WON
+  APPEAL_LOST
+  CLOSED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AppealStatus {
+  DRAFT
+  SUBMITTED
+  WON
+  LOST
+}

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init --defaults --yes)",
+      "Bash(npx shadcn@latest add button card input label badge table dialog sheet tabs accordion toast progress select checkbox form --yes)",
+      "Bash(npx shadcn@latest add button card input label badge table dialog sheet tabs accordion sonner progress select checkbox form --yes)",
+      "Bash(npx shadcn@latest add form --yes)",
+      "Bash(ls /c/Users/malad/dev/dental-denial/*.config.*)",
+      "Bash(npm run:*)",
+      "Bash(npx prisma:*)",
+      "Bash(node -e \"const p = require\\(''@prisma/client/package.json''\\); console.log\\(p.version\\)\")",
+      "Bash(node -e \"const p = require\\(''./node_modules/prisma/package.json''\\); console.log\\(p.version\\)\")"
+    ]
+  }
+}
