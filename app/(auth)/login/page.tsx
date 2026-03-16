@@ -51,7 +51,7 @@ export default function LoginPage() {
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="demo@claimguard.ai" required />
+              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -65,9 +65,6 @@ export default function LoginPage() {
             Don&apos;t have an account?{' '}
             <Link href="/register" className="font-medium hover:underline" style={{ color: '#5B3FD4' }}>Register</Link>
           </p>
-          <div className="mt-4 p-3 rounded text-xs" style={{ backgroundColor: '#E8E4FF', color: '#5B3FD4' }}>
-            <strong>Demo:</strong> demo@claimguard.ai / demo1234
-          </div>
         </CardContent>
       </Card>
     </div>

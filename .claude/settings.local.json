@@ -12,5 +12,18 @@
       "Bash(node -e \"const p = require\\(''@prisma/client/package.json''\\); console.log\\(p.version\\)\")",
       "Bash(node -e \"const p = require\\(''./node_modules/prisma/package.json''\\); console.log\\(p.version\\)\")"
     ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat /c/Users/malad/dev/dental-denial/RETROSPECTIVE.md"
+          }
+        ]
+      }
+    ]
   }
 }

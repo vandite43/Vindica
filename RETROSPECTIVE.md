@@ -97,6 +97,14 @@
 
 ---
 
+### 2026-03-16 — Login page cleanup & env cleanup
+
+- **app/(auth)/login/page.tsx** — removed demo credentials hint box (`Demo: demo@claimguard.ai / demo1234`), updated email input placeholder from `demo@claimguard.ai` to `you@example.com`
+- **.env.example** — deleted (user has real API key in `.env.local`)
+- **.claude/settings.local.json** — added `UserPromptSubmit` hook to auto-inject RETROSPECTIVE.md at start of every conversation
+
+---
+
 ## Known State / To-Do
 
 - Database needs to be set up before the app will work: `docker run` for PostgreSQL → `npx prisma migrate dev` → `npx prisma db seed`
