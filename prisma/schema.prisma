@@ -43,6 +43,10 @@ model Claim {
   cdtCodes          String[]
   diagnosisCodes    String[]
   totalAmount       Float
+  xraysAttached     Boolean       @default(false)
+  perioCharting     Boolean       @default(false)
+  preAuthObtained   Boolean       @default(false)
+  narrativeIncluded Boolean       @default(false)
   status            ClaimStatus   @default(PENDING)
   submittedAt       DateTime?
   denialRiskScore   Float?

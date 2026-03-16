@@ -42,6 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       patientName, patientDob, patientInsuranceId,
       payerId, payerName, planType,
       claimDate, serviceDate, cdtCodes, diagnosisCodes, totalAmount,
+      xraysAttached, perioCharting, preAuthObtained, narrativeIncluded,
       status, submittedAt, deniedAt, denialReason, denialCode,
     } = body;
 
@@ -59,6 +60,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(cdtCodes !== undefined && { cdtCodes }),
         ...(diagnosisCodes !== undefined && { diagnosisCodes }),
         ...(totalAmount !== undefined && { totalAmount }),
+        ...(xraysAttached !== undefined && { xraysAttached }),
+        ...(perioCharting !== undefined && { perioCharting }),
+        ...(preAuthObtained !== undefined && { preAuthObtained }),
+        ...(narrativeIncluded !== undefined && { narrativeIncluded }),
         ...(status !== undefined && { status }),
         ...(submittedAt !== undefined && { submittedAt: new Date(submittedAt) }),
         ...(deniedAt !== undefined && { deniedAt: new Date(deniedAt) }),

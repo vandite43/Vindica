@@ -55,6 +55,12 @@ export default function EditClaimPage({ params }: { params: Promise<{ id: string
       });
       setCdtCodes(claim.cdtCodes?.length ? claim.cdtCodes : ['']);
       setDiagnosisCodes(claim.diagnosisCodes?.length ? claim.diagnosisCodes : ['']);
+      setDocs({
+        xrays: claim.xraysAttached ?? false,
+        perioChart: claim.perioCharting ?? false,
+        preAuth: claim.preAuthObtained ?? false,
+        narrative: claim.narrativeIncluded ?? false,
+      });
       setFetching(false);
     }).catch(() => setFetching(false));
   }, [id]);
@@ -77,6 +83,10 @@ export default function EditClaimPage({ params }: { params: Promise<{ id: string
         totalAmount: parseFloat(form.totalAmount),
         cdtCodes: cdtCodes.filter(Boolean),
         diagnosisCodes: diagnosisCodes.filter(Boolean),
+        xraysAttached: docs.xrays,
+        perioCharting: docs.perioChart,
+        preAuthObtained: docs.preAuth,
+        narrativeIncluded: docs.narrative,
       }),
     });
 
