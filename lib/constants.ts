@@ -28,10 +28,10 @@ export const DENIAL_REASONS = [
 ];
 
 export const RISK_COLORS = {
-  LOW: 'text-green-600 bg-green-50 border-green-200',
-  MEDIUM: 'text-amber-600 bg-amber-50 border-amber-200',
-  HIGH: 'text-orange-600 bg-orange-50 border-orange-200',
-  CRITICAL: 'text-red-600 bg-red-50 border-red-200',
+  LOW:      'bg-[#E0F5F3] text-[#3BBFB0]',
+  MEDIUM:   'bg-amber-50 text-amber-600',
+  HIGH:     'bg-orange-50 text-orange-600',
+  CRITICAL: 'bg-red-50 text-red-600',
 };
 
 export const STATUS_COLORS: Record<string, string> = {

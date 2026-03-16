@@ -2,8 +2,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { VindicaMark } from '@/components/layout/VindicaMark';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -33,16 +33,16 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F4C81] to-[#1E6BB8] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#1A1033' }}>
+      <Card className="w-full max-w-md shadow-xl" style={{ backgroundColor: '#F8F7FF' }}>
         <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-3">
-            <div className="w-12 h-12 bg-[#0F4C81] rounded-xl flex items-center justify-center">
-              <Shield className="h-7 w-7 text-[#00B4A2]" />
-            </div>
+          <div className="flex justify-center mb-4">
+            <VindicaMark size={56} />
           </div>
-          <CardTitle className="text-2xl" style={{ fontFamily: 'Instrument Serif, serif' }}>Create Account</CardTitle>
-          <CardDescription>Set up your practice on ClaimGuard AI</CardDescription>
+          <CardTitle className="text-2xl font-bold" style={{ fontFamily: 'Trebuchet MS, Segoe UI, sans-serif', color: '#1A1033' }}>
+            Create Account
+          </CardTitle>
+          <CardDescription>Set up your practice on Vindica</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -63,13 +63,13 @@ export default function RegisterPage() {
               <Label>Practice Name</Label>
               <Input value={form.practiceName} onChange={e => setForm({...form, practiceName: e.target.value})} placeholder="Sunshine Family Dentistry" required />
             </div>
-            <Button type="submit" className="w-full bg-[#0F4C81] hover:bg-[#1E6BB8]" disabled={loading}>
+            <Button type="submit" className="w-full text-white" style={{ backgroundColor: '#5B3FD4' }} disabled={loading}>
               {loading ? 'Creating account...' : 'Create Account'}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-gray-600">
             Already have an account?{' '}
-            <Link href="/login" className="text-[#0F4C81] font-medium hover:underline">Sign In</Link>
+            <Link href="/login" className="font-medium hover:underline" style={{ color: '#5B3FD4' }}>Sign In</Link>
           </p>
         </CardContent>
       </Card>

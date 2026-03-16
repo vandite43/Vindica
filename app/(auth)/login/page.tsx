@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { VindicaLogo } from '@/components/layout/VindicaLogo';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -34,15 +34,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F4C81] to-[#1E6BB8] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#1A1033' }}>
+      <Card className="w-full max-w-md shadow-xl" style={{ backgroundColor: '#F8F7FF' }}>
         <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-3">
-            <div className="w-12 h-12 bg-[#0F4C81] rounded-xl flex items-center justify-center">
-              <Shield className="h-7 w-7 text-[#00B4A2]" />
-            </div>
+          <div className="flex justify-center mb-4">
+            <VindicaLogo />
           </div>
-          <CardTitle className="text-2xl" style={{ fontFamily: 'Instrument Serif, serif' }}>ClaimGuard AI</CardTitle>
           <CardDescription>Sign in to your practice account</CardDescription>
         </CardHeader>
         <CardContent>
@@ -60,15 +57,15 @@ export default function LoginPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
             </div>
-            <Button type="submit" className="w-full bg-[#0F4C81] hover:bg-[#1E6BB8]" disabled={loading}>
+            <Button type="submit" className="w-full text-white" style={{ backgroundColor: '#5B3FD4' }} disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-gray-600">
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-[#0F4C81] font-medium hover:underline">Register</Link>
+            <Link href="/register" className="font-medium hover:underline" style={{ color: '#5B3FD4' }}>Register</Link>
           </p>
-          <div className="mt-4 p-3 bg-blue-50 rounded text-xs text-blue-700">
+          <div className="mt-4 p-3 rounded text-xs" style={{ backgroundColor: '#E8E4FF', color: '#5B3FD4' }}>
             <strong>Demo:</strong> demo@claimguard.ai / demo1234
           </div>
         </CardContent>

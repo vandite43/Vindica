@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { ChevronDown, ChevronRight, AlertTriangle, Clock, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -68,7 +68,7 @@ export default function PayersPage() {
                 ))
               ) : (
                 payers.map(payer => (
-                  <tbody key={payer.id}>
+                  <React.Fragment key={payer.id}>
                     <tr
                       className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
                       onClick={() => toggleExpand(payer.id)}
@@ -174,7 +174,7 @@ export default function PayersPage() {
                         </td>
                       </tr>
                     )}
-                  </tbody>
+                  </React.Fragment>
                 ))
               )}
             </tbody>

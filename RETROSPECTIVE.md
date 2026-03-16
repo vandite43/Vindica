@@ -82,6 +82,21 @@
 
 ---
 
+---
+
+### 2026-03-16 — Branding fix: Vindica Design System applied
+
+- **globals.css** — replaced all old oklch/blue variables with exact Vindica hex palette: `--primary: #5B3FD4`, `--midnight: #1A1033`, `--mint: #3BBFB0`, `--ghost: #F0EEFF`, `--primary-light: #8B72E8`, `--primary-mist: #E8E4FF`, `--white: #F8F7FF`, `--danger: #DC2626`, `--warning: #D97706`, `--border: #E8E6F0`. Added `--font-display` and `--font-body` vars. Updated body to use `var(--font-body)` and `var(--white)` background, `var(--midnight)` text. DM Sans font only (removed Instrument Serif). Tailwind `@theme inline` block extended with `--color-primary`, `--color-midnight`, `--color-mint`, `--color-ghost`, `--color-primary-light`, `--color-primary-mist`.
+- **components/layout/VindicaMark.tsx** — created exact SVG from spec: medical cross from two pill rects + center circle + 4 accent dots. Supports `variant="default"` (fill #5B3FD4) and `variant="dark"` (fill #8B72E8) for sidebar.
+- **components/layout/VindicaLogo.tsx** — created full wordmark: VindicaMark(80) + "Vindi**ca**" in Trebuchet MS + tagline + divider + subtitle, exactly as spec.
+- **components/layout/Sidebar.tsx** — rebuilt: `bg-midnight (#1A1033)`, VindicaMark dark variant (lavender #8B72E8), "Vindi**ca**" wordmark in white/lavender, active nav pill uses `bg-primary (#5B3FD4)` white text, inactive nav uses `rgba(255,255,255,0.45)`. Removed Shield icon and all old blue colors.
+- **lib/constants.ts RISK_COLORS** — updated to spec: LOW=`bg-[#E0F5F3] text-[#3BBFB0]`, MEDIUM=`bg-amber-50 text-amber-600`, HIGH=`bg-orange-50 text-orange-600`, CRITICAL=`bg-red-50 text-red-600`.
+- **app/(auth)/login/page.tsx** — background now midnight (#1A1033), uses VindicaLogo, buttons/links use #5B3FD4, demo hint uses primary-mist bg.
+- **app/(auth)/register/page.tsx** — same pattern, uses VindicaMark(56), Trebuchet MS title.
+- **Payer page fix** — also fixed `<tbody>` nested in `<tbody>` hydration error (replaced with React.Fragment).
+
+---
+
 ## Known State / To-Do
 
 - Database needs to be set up before the app will work: `docker run` for PostgreSQL → `npx prisma migrate dev` → `npx prisma db seed`
