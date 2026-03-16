@@ -97,6 +97,19 @@
 
 ---
 
+### 2026-03-16 — Claim edit functionality
+
+- **app/(dashboard)/claims/[id]/edit/page.tsx** — new edit page: pre-populates all claim fields from the API, PATCHes on save, redirects back to detail page
+- **app/(dashboard)/claims/[id]/page.tsx** — added Edit Claim button (with Pencil icon) to action bar, visible only when claim status is DRAFT or PENDING
+
+---
+
+### 2026-03-16 — Fix denial risk gauge centering
+
+- **app/(dashboard)/claims/[id]/page.tsx** — replaced broken CSS clip-path gauge with proper SVG `<path>` arc using `strokeDasharray`/`strokeDashoffset`. Arc now renders perfectly centered inside the card at all times.
+
+---
+
 ### 2026-03-16 — Login page cleanup & env cleanup
 
 - **app/(auth)/login/page.tsx** — removed demo credentials hint box (`Demo: demo@claimguard.ai / demo1234`), updated email input placeholder from `demo@claimguard.ai` to `you@example.com`

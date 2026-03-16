@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate, getRiskColor } from '@/lib/utils';
 import { STATUS_COLORS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { Brain, RefreshCw, AlertTriangle, CheckCircle, XCircle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, CheckCircle, XCircle, FileText, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import type { ClaimAnalysis, RiskFactor } from '@/types';
 
 interface Claim {
@@ -306,6 +306,13 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2">
+            {(claim.status === 'DRAFT' || claim.status === 'PENDING') && (
+              <Link href={`/claims/${id}/edit`}>
+                <Button variant="outline">
+                  <Pencil className="h-4 w-4 mr-2" /> Edit Claim
+                </Button>
+              </Link>
+            )}
             <Button
               onClick={runAnalysis}
               disabled={analyzing}
