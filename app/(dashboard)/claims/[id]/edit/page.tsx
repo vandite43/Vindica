@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Save } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PLAN_TYPES, CDT_CODES } from '@/lib/constants';
 
 interface Payer {
@@ -24,6 +25,7 @@ export default function EditClaimPage({ params }: { params: Promise<{ id: string
   const [fetching, setFetching] = useState(true);
   const [cdtCodes, setCdtCodes] = useState(['']);
   const [diagnosisCodes, setDiagnosisCodes] = useState(['']);
+  const [docs, setDocs] = useState({ xrays: false, perioChart: false, preAuth: false, narrative: false });
   const [form, setForm] = useState({
     patientName: '',
     patientDob: '',
@@ -269,6 +271,32 @@ export default function EditClaimPage({ params }: { params: Promise<{ id: string
                   <Plus className="h-4 w-4 mr-1" /> Add Diagnosis Code
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Documentation Checklist */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Documentation Checklist</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'xrays', label: 'X-rays attached' },
+                { key: 'perioChart', label: 'Periodontal chart included' },
+                { key: 'preAuth', label: 'Pre-authorization obtained' },
+                { key: 'narrative', label: 'Narrative/clinical notes included' },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`edit-${key}`}
+                    checked={docs[key as keyof typeof docs]}
+                    onCheckedChange={v => setDocs({ ...docs, [key]: !!v })}
+                  />
+                  <Label htmlFor={`edit-${key}`} className="cursor-pointer font-normal">
+                    {label}
+                  </Label>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
