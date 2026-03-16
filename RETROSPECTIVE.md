@@ -97,6 +97,12 @@
 
 ---
 
+### 2026-03-16 — Switch AI model to Haiku 4.5
+
+- All three AI modules (`claim-analyzer.ts`, `appeal-generator.ts`, `cdt-optimizer.ts`) updated from `claude-sonnet-4-20250514` to `claude-haiku-4-5-20251001`
+
+---
+
 ### 2026-03-16 — Claim edit functionality
 
 - **app/(dashboard)/claims/[id]/edit/page.tsx** — new edit page: pre-populates all claim fields from the API, PATCHes on save, redirects back to detail page
@@ -118,11 +124,24 @@
 
 ---
 
+### 2026-03-16 — AI Model Selector
+
+- **lib/constants.ts** — added `AI_MODELS` array (Haiku 4.5, Sonnet 4.6, Opus 4.6) and `DEFAULT_AI_MODEL = 'claude-haiku-4-5-20251001'`
+- **lib/hooks/useAIModel.ts** — new file: `useAIModel()` React hook (reads/writes to `localStorage`), `getStoredModel()` for non-hook contexts
+- **lib/ai/claim-analyzer.ts** — added `model` parameter with default to `DEFAULT_AI_MODEL`
+- **lib/ai/appeal-generator.ts** — added `model` parameter with default to `DEFAULT_AI_MODEL`
+- **app/api/claims/[id]/analyze/route.ts** — reads `model` from request body, passes to `analyzeClaim()`
+- **app/api/appeals/[id]/generate/route.ts** — reads `model` from request body, passes to `generateAppealLetter()`
+- **app/(dashboard)/settings/page.tsx** — rebuilt as client component with AI Model card: selectable radio-style buttons for each model, persists selection to localStorage via `useAIModel` hook
+- **app/(dashboard)/claims/[id]/page.tsx** — added `selectedModel` state (seeded from `getStoredModel()`), compact `<select>` dropdown next to Run Analysis button, model passed in analysis fetch body
+- **app/(dashboard)/appeals/[id]/page.tsx** — same pattern: model dropdown next to Regenerate button, model passed in regenerate fetch body
+
+---
+
 ## Known State / To-Do
 
 - Database needs to be set up before the app will work: `docker run` for PostgreSQL → `npx prisma migrate dev` → `npx prisma db seed`
 - `.env.local` needs a real `ANTHROPIC_API_KEY` for AI features to work
-- Settings page is a stub (no functionality yet)
 - No toast notifications wired up yet (sonner installed but not fully integrated)
 - No mobile navigation component built yet (MobileNav.tsx stub not created)
 - Prisma 7 `prisma.config.ts` pattern used instead of classic `.env` datasource URL

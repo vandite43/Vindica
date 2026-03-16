@@ -1,3 +1,11 @@
+export const AI_MODELS = [
+  { id: 'claude-haiku-4-5-20251001',  label: 'Haiku 4.5',  description: 'Fastest · Best for routine claims' },
+  { id: 'claude-sonnet-4-6',          label: 'Sonnet 4.6', description: 'Balanced · Better reasoning' },
+  { id: 'claude-opus-4-6',            label: 'Opus 4.6',   description: 'Most capable · Complex cases' },
+];
+
+export const DEFAULT_AI_MODEL = 'claude-haiku-4-5-20251001';
+
 export const CDT_CODES = {
   D0120: 'Periodic oral evaluation',
   D0210: 'Complete series of radiographic images',

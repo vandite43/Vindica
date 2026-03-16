@@ -1,10 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ClaimAnalysis, ClaimInput, PayerData } from '@/types';
 import { CLAIM_ANALYZER_SYSTEM_PROMPT } from './prompts';
+import { DEFAULT_AI_MODEL } from '@/lib/constants';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-export async function analyzeClaim(claim: ClaimInput, payerIntelligence: PayerData | null): Promise<ClaimAnalysis> {
+export async function analyzeClaim(claim: ClaimInput, payerIntelligence: PayerData | null, model: string = DEFAULT_AI_MODEL): Promise<ClaimAnalysis> {
   const payerContext = payerIntelligence
     ? `\nPayer Intelligence for ${payerIntelligence.name}:
 - Historical denial rate: ${payerIntelligence.denialRate ? (payerIntelligence.denialRate * 100).toFixed(1) + '%' : 'Unknown'}
@@ -42,7 +43,7 @@ Return ONLY this JSON structure:
 
   try {
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model,
       max_tokens: 2000,
       system: CLAIM_ANALYZER_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],

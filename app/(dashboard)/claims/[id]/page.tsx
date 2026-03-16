@@ -12,6 +12,8 @@ import { STATUS_COLORS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Brain, RefreshCw, AlertTriangle, CheckCircle, XCircle, FileText, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import type { ClaimAnalysis, RiskFactor } from '@/types';
+import { AI_MODELS } from '@/lib/constants';
+import { getStoredModel } from '@/lib/hooks/useAIModel';
 
 interface Claim {
   id: string;
@@ -127,6 +129,7 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
   const [analyzing, setAnalyzing] = useState(false);
   const [denialModal, setDenialModal] = useState<DenialModalState>({ open: false, reason: '', code: '' });
   const [updating, setUpdating] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>(() => getStoredModel());
 
   useEffect(() => {
     fetchClaim();
@@ -145,7 +148,11 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
 
   async function runAnalysis() {
     setAnalyzing(true);
-    const res = await fetch(`/api/claims/${id}/analyze`, { method: 'POST' });
+    const res = await fetch(`/api/claims/${id}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: selectedModel }),
+    });
     if (res.ok) {
       const data = await res.json();
       setClaim(prev => prev ? { ...prev, ...data.claim, aiAnalysis: data.analysis } : null);
@@ -313,18 +320,30 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
                 </Button>
               </Link>
             )}
-            <Button
-              onClick={runAnalysis}
-              disabled={analyzing}
-              variant="outline"
-              className="text-[#0F4C81] border-[#0F4C81]"
-            >
-              {analyzing ? (
-                <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Analyzing...</>
-              ) : (
-                <><Brain className="h-4 w-4 mr-2" /> {claim.aiAnalysis ? 'Re-analyze' : 'Run Analysis'}</>
-              )}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                onClick={runAnalysis}
+                disabled={analyzing}
+                variant="outline"
+                className="text-[#0F4C81] border-[#0F4C81]"
+              >
+                {analyzing ? (
+                  <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Analyzing...</>
+                ) : (
+                  <><Brain className="h-4 w-4 mr-2" /> {claim.aiAnalysis ? 'Re-analyze' : 'Run Analysis'}</>
+                )}
+              </Button>
+              <select
+                value={selectedModel}
+                onChange={e => setSelectedModel(e.target.value)}
+                className="h-9 rounded-md border border-[#0F4C81] px-2 text-xs text-[#0F4C81] bg-white focus:outline-none focus:ring-1 focus:ring-[#0F4C81]"
+                title="AI model for this analysis"
+              >
+                {AI_MODELS.map(m => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+            </div>
             {claim.status === 'DRAFT' || claim.status === 'PENDING' ? (
               <Button onClick={markSubmitted} disabled={updating} variant="outline">
                 <CheckCircle className="h-4 w-4 mr-2" /> Mark Submitted

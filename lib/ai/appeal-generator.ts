@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { PayerData } from '@/types';
 import { APPEAL_GENERATOR_SYSTEM_PROMPT } from './prompts';
+import { DEFAULT_AI_MODEL } from '@/lib/constants';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -20,7 +21,8 @@ interface ClaimForAppeal {
 export async function generateAppealLetter(
   claim: ClaimForAppeal,
   denialReason: string,
-  payerIntelligence: PayerData | null
+  payerIntelligence: PayerData | null,
+  model: string = DEFAULT_AI_MODEL
 ): Promise<string> {
   const payerContext = payerIntelligence
     ? `\nKnown payer quirks: ${payerIntelligence.documentationQuirks.join('; ')}`
@@ -43,7 +45,7 @@ ${payerContext}
 Write a complete, professional appeal letter ready to mail. Use [DATE], [CLAIM NUMBER], [REFERENCE NUMBER], and [PROVIDER NPI] as placeholders where needed.`;
 
   const response = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model,
     max_tokens: 1500,
     system: APPEAL_GENERATOR_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],

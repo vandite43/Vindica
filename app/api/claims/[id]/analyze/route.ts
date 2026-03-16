@@ -3,12 +3,14 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { analyzeClaim } from '@/lib/ai/claim-analyzer';
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
+    const body = await req.json().catch(() => ({}));
+    const model: string | undefined = body.model;
     const claim = await prisma.claim.findUnique({
       where: { id },
       include: { practice: { select: { userId: true } } },
@@ -45,7 +47,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
             requiresPreAuth: payerIntelligence.requiresPreAuth,
             documentationQuirks: payerIntelligence.documentationQuirks,
           }
-        : null
+        : null,
+      model
     );
 
     const updated = await prisma.claim.update({

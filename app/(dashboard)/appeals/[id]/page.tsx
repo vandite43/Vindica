@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Copy, Download, RefreshCw, Send, ArrowLeft, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
+import { AI_MODELS } from '@/lib/constants';
+import { getStoredModel } from '@/lib/hooks/useAIModel';
 
 interface Appeal {
   id: string;
@@ -44,6 +46,7 @@ export default function AppealDetailPage({ params }: { params: Promise<{ id: str
   const [resolutionModal, setResolutionModal] = useState(false);
   const [resolution, setResolution] = useState({ outcome: 'WON', amountRecovered: '' });
   const [copied, setCopied] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>(() => getStoredModel());
 
   useEffect(() => {
     fetchAppeal();
@@ -62,7 +65,11 @@ export default function AppealDetailPage({ params }: { params: Promise<{ id: str
 
   async function regenerate() {
     setRegenerating(true);
-    const res = await fetch(`/api/appeals/${id}/generate`, { method: 'POST' });
+    const res = await fetch(`/api/appeals/${id}/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: selectedModel }),
+    });
     if (res.ok) {
       const data = await res.json();
       setLetterContent(data.letterContent);
@@ -197,15 +204,27 @@ export default function AppealDetailPage({ params }: { params: Promise<{ id: str
 
             {/* Actions */}
             <div className="space-y-2">
-              <Button
-                className="w-full bg-[#0F4C81] hover:bg-[#1E6BB8]"
-                size="sm"
-                onClick={regenerate}
-                disabled={regenerating}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${regenerating ? 'animate-spin' : ''}`} />
-                {regenerating ? 'Regenerating...' : 'Regenerate Letter'}
-              </Button>
+              <div className="flex gap-1">
+                <Button
+                  className="flex-1 bg-[#0F4C81] hover:bg-[#1E6BB8]"
+                  size="sm"
+                  onClick={regenerate}
+                  disabled={regenerating}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${regenerating ? 'animate-spin' : ''}`} />
+                  {regenerating ? 'Regenerating...' : 'Regenerate'}
+                </Button>
+                <select
+                  value={selectedModel}
+                  onChange={e => setSelectedModel(e.target.value)}
+                  className="h-9 rounded-md border border-gray-300 px-2 text-xs text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-[#0F4C81]"
+                  title="AI model for regeneration"
+                >
+                  {AI_MODELS.map(m => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
               <Button variant="outline" size="sm" className="w-full" onClick={copyToClipboard}>
                 <Copy className="h-4 w-4 mr-2" />
                 {copied ? 'Copied!' : 'Copy to Clipboard'}
