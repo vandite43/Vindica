@@ -38,9 +38,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!claim) return NextResponse.json({ error: 'Claim not found' }, { status: 404 });
     if (claim.practice.userId !== session.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+    const {
+      patientName, patientDob, patientInsuranceId,
+      payerId, payerName, planType,
+      claimDate, serviceDate, cdtCodes, diagnosisCodes, totalAmount,
+      status, submittedAt, deniedAt, denialReason, denialCode,
+    } = body;
+
     const updated = await prisma.claim.update({
       where: { id },
-      data: body,
+      data: {
+        ...(patientName !== undefined && { patientName }),
+        ...(patientDob !== undefined && { patientDob: new Date(patientDob) }),
+        ...(patientInsuranceId !== undefined && { patientInsuranceId }),
+        ...(payerId !== undefined && { payerId }),
+        ...(payerName !== undefined && { payerName }),
+        ...(planType !== undefined && { planType }),
+        ...(claimDate !== undefined && { claimDate: new Date(claimDate) }),
+        ...(serviceDate !== undefined && { serviceDate: new Date(serviceDate) }),
+        ...(cdtCodes !== undefined && { cdtCodes }),
+        ...(diagnosisCodes !== undefined && { diagnosisCodes }),
+        ...(totalAmount !== undefined && { totalAmount }),
+        ...(status !== undefined && { status }),
+        ...(submittedAt !== undefined && { submittedAt: new Date(submittedAt) }),
+        ...(deniedAt !== undefined && { deniedAt: new Date(deniedAt) }),
+        ...(denialReason !== undefined && { denialReason }),
+        ...(denialCode !== undefined && { denialCode }),
+      },
     });
 
     return NextResponse.json(updated);
