@@ -43,7 +43,7 @@ ${payerContext}
 Write a complete, professional appeal letter ready to mail. Use [DATE], [CLAIM NUMBER], [REFERENCE NUMBER], and [PROVIDER NPI] as placeholders where needed.`;
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 1500,
     system: APPEAL_GENERATOR_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
