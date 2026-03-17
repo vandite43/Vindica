@@ -106,9 +106,9 @@ function RiskFactorItem({ factor }: { factor: RiskFactor }) {
         className="w-full flex items-center justify-between p-3 hover:bg-gray-50 text-left"
         onClick={() => setOpen(!open)}
       >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-1">
           <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0" />
-          <span className="text-sm font-medium text-gray-800 truncate">{factor.factor}</span>
+          <span className="text-sm font-medium text-gray-800">{factor.factor}</span>
         </div>
         <div className="flex items-center gap-2 ml-2">
           <span className={cn('px-2 py-0.5 rounded-full text-xs border font-medium capitalize', severityColors[factor.severity])}>

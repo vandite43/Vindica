@@ -123,6 +123,12 @@
 
 ---
 
+### 2026-03-17 — Fix router cache causing stale dashboard KPIs
+
+- **next.config.ts** — added `experimental.staleTimes.dynamic = 0` to disable the Next.js client-side router cache for dynamic pages. Without this, navigating to /dashboard via the sidebar served a cached page for up to 30 seconds even though the server data was fresh.
+
+---
+
 ### 2026-03-17 — Fix Revenue at Risk not updating on dashboard
 
 - **app/(dashboard)/dashboard/page.tsx** — added `export const dynamic = 'force-dynamic'` to prevent Next.js from caching the server component. Without this, KPIs (Revenue at Risk, denial rate, etc.) showed stale values after claim updates.
