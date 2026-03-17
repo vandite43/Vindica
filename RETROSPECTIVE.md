@@ -116,6 +116,60 @@
 
 ---
 
+### 2026-03-16 — App started
+
+- Ran `npm run dev` in background after clearing `.next` cache — app responding on http://localhost:3000
+
+---
+
+### 2026-03-16 — Clear Turbopack cache after Prisma migration
+
+- Deleted `.next` folder — Turbopack bundles and caches the Prisma client inside `.next/dev/server/chunks/`. Running `prisma generate` updates `node_modules` but Turbopack's cache still serves the old bundle. Must delete `.next` and do a clean `npm run dev` restart after any schema migration.
+
+---
+
+### 2026-03-16 — Fix stale Prisma client after documentation fields migration
+
+- Ran `npx prisma generate` to regenerate the Prisma client after the `add_documentation_fields` migration
+- **Root cause:** Turbopack caches the Prisma client in memory; after `prisma migrate dev` the client wasn't rebuilt, so `prisma.claim.update()` threw `PrismaClientValidationError` for unknown fields
+- **Fix:** Run `npx prisma generate` then restart the dev server (Ctrl+C → `npm run dev`) after any schema migration
+
+---
+
+### 2026-03-16 — Expose real PATCH error for debugging
+
+- **app/api/claims/[id]/route.ts** — PATCH catch block now returns the actual error message instead of generic "Internal server error"
+- **app/(dashboard)/claims/[id]/edit/page.tsx** — alert now shows the real error from the API response
+
+---
+
+### 2026-03-16 — Fix documentation checklist not saving
+
+- **prisma/schema.prisma** — added four Boolean fields to Claim model: `xraysAttached`, `perioCharting`, `preAuthObtained`, `narrativeIncluded` (all default false)
+- **prisma/migrations/20260316211903_add_documentation_fields** — migration applied
+- **app/api/claims/[id]/route.ts** — PATCH route now accepts and saves the four doc fields
+- **app/(dashboard)/claims/[id]/edit/page.tsx** — edit page now loads doc field values from the API on mount and sends them on save
+
+---
+
+### 2026-03-16 — Fix claim edit not saving
+
+- **app/api/claims/[id]/route.ts** — PATCH route was doing `data: body` (raw request body passed directly to Prisma), which fails when the body contains unknown or non-updatable fields. Fixed by explicitly destructuring and mapping only the allowed fields, with `new Date()` coercion for all DateTime columns.
+
+---
+
+### 2026-03-16 — Darken favicon purple
+
+- **app/icon.svg** — changed all purple from `#5B3FD4` to `#3B1FA8` for better visibility in browser tab
+
+---
+
+### 2026-03-16 — Vindica SVG favicon (transparent)
+
+- **app/icon.svg** — Vindica mark on transparent background: two pill rects (fill #5B3FD4 at 15% opacity, stroke at 50%), solid center circle (#5B3FD4), four accent dots (35% opacity). No background rect. Hard refresh (Ctrl+Shift+R) required to see change in browser tab.
+
+---
+
 ### 2026-03-16 — Fix browser tab title
 
 - **app/layout.tsx** — changed `title` metadata from `'ClaimGuard AI — Dental Claim Denial Predictor'` to `'Vindica — Dental Claim Denial Predictor'`

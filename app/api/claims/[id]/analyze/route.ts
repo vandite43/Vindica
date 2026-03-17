@@ -34,6 +34,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         cdtCodes: claim.cdtCodes,
         diagnosisCodes: claim.diagnosisCodes,
         totalAmount: claim.totalAmount,
+        xraysAttached: claim.xraysAttached,
+        perioCharting: claim.perioCharting,
+        preAuthObtained: claim.preAuthObtained,
+        narrativeIncluded: claim.narrativeIncluded,
       },
       payerIntelligence
         ? {
