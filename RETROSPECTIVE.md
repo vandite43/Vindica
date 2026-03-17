@@ -123,6 +123,12 @@
 
 ---
 
+### 2026-03-17 — Fix risk factor text truncation
+
+- **app/(dashboard)/claims/[id]/page.tsx** — removed `truncate` class and `min-w-0` from risk factor row so full sentence displays instead of cutting off with "..."
+
+---
+
 ### 2026-03-17 — Fix router cache causing stale dashboard KPIs
 
 - **next.config.ts** — added `experimental.staleTimes.dynamic = 0` to disable the Next.js client-side router cache for dynamic pages. Without this, navigating to /dashboard via the sidebar served a cached page for up to 30 seconds even though the server data was fresh.

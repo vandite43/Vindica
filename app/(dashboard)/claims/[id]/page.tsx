@@ -469,16 +469,16 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b text-gray-500 text-xs">
-                          <th className="text-left pb-2">Code</th>
-                          <th className="text-left pb-2">Issue</th>
+                          <th className="text-left pb-2 pr-6">Code</th>
+                          <th className="text-left pb-2 pr-6">Issue</th>
                           <th className="text-left pb-2">Alternative</th>
                         </tr>
                       </thead>
                       <tbody>
                         {analysis.cdtCodeAnalysis.map((item, i) => (
                           <tr key={i} className="border-b last:border-0">
-                            <td className="py-2 font-mono font-medium">{item.code}</td>
-                            <td className="py-2 text-gray-600 text-xs">{item.issue}</td>
+                            <td className="py-2 pr-6 font-mono font-medium">{item.code}</td>
+                            <td className="py-2 pr-6 text-gray-600 text-xs">{item.issue}</td>
                             <td className="py-2">
                               {item.alternativeCode ? (
                                 <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-xs font-mono">
