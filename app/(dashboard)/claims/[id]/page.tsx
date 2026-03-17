@@ -24,8 +24,15 @@ interface Claim {
   serviceDate: string;
   claimDate: string;
   cdtCodes: string[];
+  toothNumbers: string[];
   diagnosisCodes: string[];
   totalAmount: number;
+  providerNpi?: string | null;
+  preAuthNumber?: string | null;
+  xraysAttached: boolean;
+  perioCharting: boolean;
+  preAuthObtained: boolean;
+  narrativeIncluded: boolean;
   status: string;
   denialRiskScore?: number;
   riskLevel?: string;
@@ -288,6 +295,18 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
                   ))}
                 </div>
               </div>
+              {claim.toothNumbers?.length > 0 && (
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Tooth Numbers</p>
+                  <div className="flex gap-1 flex-wrap">
+                    {claim.toothNumbers.map(t => (
+                      <span key={t} className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs font-mono">
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               {claim.diagnosisCodes.length > 0 && (
                 <div>
                   <p className="text-gray-500 text-xs mb-1">Diagnosis Codes</p>
@@ -300,6 +319,37 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 </div>
               )}
+              {(claim.providerNpi || claim.preAuthNumber) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {claim.providerNpi && (
+                    <div>
+                      <p className="text-gray-500 text-xs">Provider NPI</p>
+                      <p className="font-mono text-xs">{claim.providerNpi}</p>
+                    </div>
+                  )}
+                  {claim.preAuthNumber && (
+                    <div>
+                      <p className="text-gray-500 text-xs">Pre-auth #</p>
+                      <p className="font-mono text-xs">{claim.preAuthNumber}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Documentation</p>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { label: 'X-rays', value: claim.xraysAttached },
+                    { label: 'Perio Chart', value: claim.perioCharting },
+                    { label: 'Pre-auth', value: claim.preAuthObtained },
+                    { label: 'Narrative', value: claim.narrativeIncluded },
+                  ].map(({ label, value }) => (
+                    <span key={label} className={`px-2 py-0.5 rounded text-xs font-medium ${value ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                      {value ? '✓' : '✗'} {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
               {claim.denialReason && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-xs font-medium text-red-700 mb-1">Denial Reason</p>

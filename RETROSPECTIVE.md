@@ -116,6 +116,53 @@
 
 ---
 
+### 2026-03-17 — Restore localhost:3000, restart app
+
+- `.env.local` — reverted `NEXTAUTH_URL` back to `http://localhost:3000`
+- Killed all node processes and restarted `npm run dev` on port 3000
+
+---
+
+### 2026-03-17 — Clear stale Prisma client after tooth/NPI/preauth migration
+
+- Killed node, deleted `.next`, ran `prisma generate`, restarted dev server
+- **Rule:** After every schema migration, always run `rm -rf .next && npx prisma generate` before restarting — Turbopack caches the old Prisma client and will throw `PrismaClientValidationError` for any new fields until cleared
+
+---
+
+### 2026-03-17 — Sync edit claim page with new claim form
+
+- **app/(dashboard)/claims/[id]/edit/page.tsx** — added all three new fields missing from edit form: tooth numbers multi-input, provider NPI field, conditional pre-auth number input. All fields load from API on mount and are sent in the PATCH body, flowing through to AI analysis on re-analyze.
+
+---
+
+### 2026-03-17 — Add tooth numbers, provider NPI, pre-auth number
+
+- **prisma/schema.prisma** — added `toothNumbers String[]`, `providerNpi String?`, `preAuthNumber String?` to Claim model
+- **migration** — `20260317032114_add_tooth_provider_preauth`
+- **types/index.ts** — added three fields to `ClaimInput`
+- **lib/ai/claim-analyzer.ts** — prompt now includes tooth numbers, provider NPI, and pre-auth number so AI can flag missing tooth numbers for procedures like D2740, D4341, D6010
+- **app/api/claims/[id]/analyze/route.ts** — passes new fields to `analyzeClaim()`
+- **app/api/claims/[id]/route.ts** — PATCH route handles saving all three fields
+- **app/(dashboard)/claims/new/page.tsx** — Tooth Numbers multi-input below CDT Codes; Treating Provider NPI in Patient Information; Pre-auth Number input revealed conditionally when pre-auth checkbox is checked
+- `.next` cache cleared after migration
+
+---
+
+### 2026-03-16 — Move AI model selector to Settings only
+
+- Removed inline model dropdown from claim detail page and appeals page
+- Model is now read silently from localStorage via `getStoredModel()` on both pages
+- Settings page remains the only place to change the model
+
+---
+
+### 2026-03-16 — Fix AI not seeing documentation checklist
+
+- **app/api/claims/[id]/analyze/route.ts** — the four doc fields (`xraysAttached`, `perioCharting`, `preAuthObtained`, `narrativeIncluded`) existed in `ClaimInput` type but were never passed from the route to `analyzeClaim()`. AI always saw them as undefined and couldn't adjust the risk score. Now passed from the DB claim object.
+
+---
+
 ### 2026-03-16 — App started
 
 - Ran `npm run dev` in background after clearing `.next` cache — app responding on http://localhost:3000
