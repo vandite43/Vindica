@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { ClaimAnalysis, ClaimInput, PayerData } from '@/types';
 import { CLAIM_ANALYZER_SYSTEM_PROMPT } from './prompts';
 import { DEFAULT_AI_MODEL } from '@/lib/constants';
+import { buildClaimContext } from '@/lib/knowledge/context-builder';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -30,6 +31,7 @@ Claim Details:
 - Pre-auth Number: ${claim.preAuthNumber || 'N/A'}
 - Documentation attached: X-rays=${claim.xraysAttached}, Perio Chart=${claim.perioCharting}, Pre-auth=${claim.preAuthObtained}, Narrative=${claim.narrativeIncluded}
 ${payerContext}
+${buildClaimContext(claim)}
 
 Return ONLY this JSON structure:
 {

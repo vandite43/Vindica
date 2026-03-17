@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { PayerData } from '@/types';
 import { APPEAL_GENERATOR_SYSTEM_PROMPT } from './prompts';
 import { DEFAULT_AI_MODEL } from '@/lib/constants';
+import { buildAppealContext } from '@/lib/knowledge/context-builder';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -9,6 +10,7 @@ interface ClaimForAppeal {
   patientName: string;
   patientDob: Date;
   patientInsuranceId: string;
+  payerId?: string | null;
   payerName: string;
   planType?: string | null;
   serviceDate: Date;
@@ -28,6 +30,8 @@ export async function generateAppealLetter(
     ? `\nKnown payer quirks: ${payerIntelligence.documentationQuirks.join('; ')}`
     : '';
 
+  const knowledgeContext = buildAppealContext(claim.cdtCodes, claim.payerId ?? '', denialReason);
+
   const prompt = `Generate a professional dental insurance appeal letter for this denied claim.
 
 Patient: ${claim.patientName}
@@ -41,6 +45,7 @@ Billed Amount: $${claim.totalAmount}
 Denial Reason: ${denialReason}
 Denial Code: ${claim.denialCode || 'See EOB'}
 ${payerContext}
+${knowledgeContext}
 
 Write a complete, professional appeal letter ready to mail. Use [DATE], [CLAIM NUMBER], [REFERENCE NUMBER], and [PROVIDER NPI] as placeholders where needed.`;
 

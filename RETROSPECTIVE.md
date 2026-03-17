@@ -123,6 +123,12 @@
 
 ---
 
+### 2026-03-17 — Add spacing in CDT Code Review table
+
+- **app/(dashboard)/claims/[id]/page.tsx** — added `pr-6` to Code and Issue columns so text doesn't run together
+
+---
+
 ### 2026-03-17 — Fix risk factor text truncation
 
 - **app/(dashboard)/claims/[id]/page.tsx** — removed `truncate` class and `min-w-0` from risk factor row so full sentence displays instead of cutting off with "..."
@@ -272,6 +278,32 @@
 - **app/(dashboard)/settings/page.tsx** — rebuilt as client component with AI Model card: selectable radio-style buttons for each model, persists selection to localStorage via `useAIModel` hook
 - **app/(dashboard)/claims/[id]/page.tsx** — added `selectedModel` state (seeded from `getStoredModel()`), compact `<select>` dropdown next to Run Analysis button, model passed in analysis fetch body
 - **app/(dashboard)/appeals/[id]/page.tsx** — same pattern: model dropdown next to Regenerate button, model passed in regenerate fetch body
+
+---
+
+### 2026-03-17 — Anti-Hallucination RAG Knowledge Base
+
+Built a structured static knowledge base injected into every AI prompt to ground analysis in real dental billing rules instead of Claude's general training.
+
+**Files created (all under `lib/knowledge/`):**
+- **cdt-codes.ts** — CDT code entry for every code in the app (D0120–D7240): description, required documentation checklist, bundling conflicts, frequency limits, pre-auth flag, supporting ICD-10 diagnosis codes
+- **payer-policies.ts** — per-payer rules keyed by payerId for all 8 seed payers (Delta Dental, Anthem, Cigna, Aetna, United Concordia, MetLife, Guardian, Humana): frequency rules, coding preferences/downcode risks, documentation requirements, bundling warnings, appeal tips
+- **icd10-support.ts** — ICD-10 → CDT support mapping with justification text (K05.x perio codes, K02.x caries, K08.x tooth loss, K04.x pulpal disease, K01.x impactions, Z01.x preventive, S02.x trauma, etc.)
+- **clinical-guidelines.ts** — citable ADA/AAP guideline snippets by category (periodontalTherapy, implants, crowns, periodontalMaintenance, extractionCriteria, diagnosticRadiographs) + `CDT_TO_GUIDELINE_MAP` linking codes to relevant guideline categories
+- **context-builder.ts** — `buildClaimContext(claim)` and `buildAppealContext(cdtCodes, payerId, denialReason)` assemblers: inject only the CDT, payer policy, diagnosis support, and guideline sections relevant to the specific claim's codes
+
+**Files modified:**
+- **lib/ai/claim-analyzer.ts** — imports `buildClaimContext`, appends `[KNOWLEDGE BASE]` block to every claim analysis prompt
+- **lib/ai/appeal-generator.ts** — imports `buildAppealContext`, adds `payerId` to `ClaimForAppeal` interface, appends `[KNOWLEDGE BASE]` block (including payer-specific appeal tips) to every appeal generation prompt
+- **lib/ai/prompts.ts** — strengthened both system prompts with `CRITICAL INSTRUCTION` blocks instructing Claude to treat injected knowledge as ground truth and prioritize it over general training
+
+**What this prevents:**
+- Wrong frequency limits → exact payer rules injected per claim
+- Made-up documentation requirements → CDT-specific checklist injected
+- Incorrect bundling rules → explicit conflict list per code
+- Vague clinical justification → ADA/AAP guideline snippets injected
+- Inconsistent appeal arguments → payer-specific appeal tips injected
+- Wrong ICD-10 → CDT logic → support matrix injected for claim's diagnosis codes
 
 ---
 
