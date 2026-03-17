@@ -123,6 +123,12 @@
 
 ---
 
+### 2026-03-17 — Show new fields on claim detail page
+
+- **app/(dashboard)/claims/[id]/page.tsx** — added to Claim interface: `toothNumbers`, `providerNpi`, `preAuthNumber`, doc booleans. Summary card now shows: tooth number pills (purple), provider NPI, pre-auth number, and a documentation row with green ✓ / gray ✗ badges for all four doc flags.
+
+---
+
 ### 2026-03-17 — Clear stale Prisma client after tooth/NPI/preauth migration
 
 - Killed node, deleted `.next`, ran `prisma generate`, restarted dev server

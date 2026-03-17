@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import DashboardClient from '@/components/dashboard/DashboardClient';
 
+export const dynamic = 'force-dynamic';
+
 async function getDashboardData(userId: string) {
   const practice = await prisma.practice.findUnique({ where: { userId } });
   if (!practice) return null;
