@@ -123,6 +123,12 @@
 
 ---
 
+### 2026-03-17 — Fix Revenue at Risk not updating on dashboard
+
+- **app/(dashboard)/dashboard/page.tsx** — added `export const dynamic = 'force-dynamic'` to prevent Next.js from caching the server component. Without this, KPIs (Revenue at Risk, denial rate, etc.) showed stale values after claim updates.
+
+---
+
 ### 2026-03-17 — Show new fields on claim detail page
 
 - **app/(dashboard)/claims/[id]/page.tsx** — added to Claim interface: `toothNumbers`, `providerNpi`, `preAuthNumber`, doc booleans. Summary card now shows: tooth number pills (purple), provider NPI, pre-auth number, and a documentation row with green ✓ / gray ✗ badges for all four doc flags.
