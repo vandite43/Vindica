@@ -6,9 +6,11 @@
 
 ## Project Identity
 
-- **App name:** ClaimGuard AI (blueprint refers to it as both "Vindica" and "ClaimGuard AI" — the built app uses ClaimGuard AI branding)
+- **App name:** Vindica (previously "ClaimGuard AI" — fully rebranded to Vindica)
 - **Stack:** Next.js 16 (App Router, TypeScript), Tailwind v4, NextAuth v5, Prisma 7, PostgreSQL, Anthropic Claude API, shadcn/ui, Recharts
 - **Working directory:** `/c/Users/malad/dev/dental-denial`
+- **Dev server:** http://localhost:3000
+- **Demo login:** demo@claimguard.ai / demo1234
 
 ---
 
@@ -36,13 +38,13 @@
 - Next.js 16: middleware renamed to `proxy.ts` with `proxy` named export; uses `getToken` from `next-auth/jwt` to avoid Prisma in Edge runtime
 
 **Phase 2 — Layout & Shell**
-- Created `app/globals.css` — Google Fonts (DM Sans, Instrument Serif), CSS variables, Tailwind base
+- Created `app/globals.css` — Google Fonts (DM Sans), CSS variables, Tailwind base
 - Created `app/layout.tsx` — root layout with metadata
 - Created `app/page.tsx` — redirects to `/dashboard`
-- Created `components/layout/Sidebar.tsx` — navy blue sidebar with Lucide icons and active state
+- Created `components/layout/Sidebar.tsx` — sidebar with Lucide icons and active state
 - Created `components/layout/Header.tsx` — top bar with signout button
 - Created `app/(dashboard)/layout.tsx` — dashboard shell with sidebar
-- Created `app/(auth)/login/page.tsx` — login form with demo credentials hint
+- Created `app/(auth)/login/page.tsx` — login form
 - Created `app/(auth)/register/page.tsx` — registration form
 - Created `components/claims/DenialRiskBadge.tsx` — color-coded risk badge
 - Created `components/appeals/AppealStatusBadge.tsx`
@@ -54,7 +56,7 @@
 
 **Phase 4 — AI Engine**
 - Created `lib/ai/prompts.ts` — system prompts for claim analyzer, appeal generator, CDT optimizer
-- Created `lib/ai/claim-analyzer.ts` — calls `claude-sonnet-4-20250514`, returns structured JSON risk assessment with graceful degradation on failure
+- Created `lib/ai/claim-analyzer.ts` — calls Claude, returns structured JSON risk assessment with graceful degradation on failure
 - Created `lib/ai/appeal-generator.ts` — generates 400–700 word professional appeal letters, payer-specific
 - Created `lib/ai/cdt-optimizer.ts` — CDT code optimization suggestions
 - Created `app/api/claims/route.ts` — GET (list with filters) + POST (create)
@@ -82,228 +84,189 @@
 
 ---
 
----
+### 2026-03-16 — Vindica Branding Applied
 
-### 2026-03-16 — Branding fix: Vindica Design System applied
+Replaced all placeholder branding with the full Vindica design system from the spec.
 
-- **globals.css** — replaced all old oklch/blue variables with exact Vindica hex palette: `--primary: #5B3FD4`, `--midnight: #1A1033`, `--mint: #3BBFB0`, `--ghost: #F0EEFF`, `--primary-light: #8B72E8`, `--primary-mist: #E8E4FF`, `--white: #F8F7FF`, `--danger: #DC2626`, `--warning: #D97706`, `--border: #E8E6F0`. Added `--font-display` and `--font-body` vars. Updated body to use `var(--font-body)` and `var(--white)` background, `var(--midnight)` text. DM Sans font only (removed Instrument Serif). Tailwind `@theme inline` block extended with `--color-primary`, `--color-midnight`, `--color-mint`, `--color-ghost`, `--color-primary-light`, `--color-primary-mist`.
-- **components/layout/VindicaMark.tsx** — created exact SVG from spec: medical cross from two pill rects + center circle + 4 accent dots. Supports `variant="default"` (fill #5B3FD4) and `variant="dark"` (fill #8B72E8) for sidebar.
-- **components/layout/VindicaLogo.tsx** — created full wordmark: VindicaMark(80) + "Vindi**ca**" in Trebuchet MS + tagline + divider + subtitle, exactly as spec.
-- **components/layout/Sidebar.tsx** — rebuilt: `bg-midnight (#1A1033)`, VindicaMark dark variant (lavender #8B72E8), "Vindi**ca**" wordmark in white/lavender, active nav pill uses `bg-primary (#5B3FD4)` white text, inactive nav uses `rgba(255,255,255,0.45)`. Removed Shield icon and all old blue colors.
-- **lib/constants.ts RISK_COLORS** — updated to spec: LOW=`bg-[#E0F5F3] text-[#3BBFB0]`, MEDIUM=`bg-amber-50 text-amber-600`, HIGH=`bg-orange-50 text-orange-600`, CRITICAL=`bg-red-50 text-red-600`.
-- **app/(auth)/login/page.tsx** — background now midnight (#1A1033), uses VindicaLogo, buttons/links use #5B3FD4, demo hint uses primary-mist bg.
-- **app/(auth)/register/page.tsx** — same pattern, uses VindicaMark(56), Trebuchet MS title.
-- **Payer page fix** — also fixed `<tbody>` nested in `<tbody>` hydration error (replaced with React.Fragment).
-
----
-
-### 2026-03-16 — Switch AI model to Haiku 4.5
-
-- All three AI modules (`claim-analyzer.ts`, `appeal-generator.ts`, `cdt-optimizer.ts`) updated from `claude-sonnet-4-20250514` to `claude-haiku-4-5-20251001`
+- **app/globals.css** — replaced all oklch/blue variables with exact Vindica hex palette: `--primary: #5B3FD4`, `--midnight: #1A1033`, `--mint: #3BBFB0`, `--ghost: #F0EEFF`, `--primary-light: #8B72E8`, `--primary-mist: #E8E4FF`, `--white: #F8F7FF`, `--danger: #DC2626`, `--warning: #D97706`, `--border: #E8E6F0`. DM Sans only (removed Instrument Serif). Tailwind `@theme inline` extended with all brand colors.
+- **components/layout/VindicaMark.tsx** — created SVG logo mark from spec: medical cross from two pill rects + center circle + 4 accent dots. Supports `variant="default"` (#5B3FD4) and `variant="dark"` (#8B72E8).
+- **components/layout/VindicaLogo.tsx** — full wordmark: VindicaMark(80) + "Vindi**ca**" in Trebuchet MS + tagline + divider + subtitle.
+- **components/layout/Sidebar.tsx** — rebuilt: `bg-midnight`, VindicaMark dark variant, "Vindi**ca**" wordmark, active nav pill `bg-primary`, inactive nav at 45% opacity.
+- **lib/constants.ts RISK_COLORS** — updated: LOW=mint, MEDIUM=amber, HIGH=orange, CRITICAL=red.
+- **app/(auth)/login/page.tsx** — midnight background, VindicaLogo, primary color buttons.
+- **app/(auth)/register/page.tsx** — same pattern, VindicaMark(56).
+- **app/layout.tsx** — title changed from `'ClaimGuard AI — Dental Claim Denial Predictor'` to `'Vindica — Dental Claim Denial Predictor'`.
+- **Payer page** — fixed `<tbody>` nested in `<tbody>` hydration error (replaced with React.Fragment).
 
 ---
 
-### 2026-03-16 — Claim edit functionality
+### 2026-03-16 — Vindica SVG Favicon
 
-- **app/(dashboard)/claims/[id]/edit/page.tsx** — new edit page: pre-populates all claim fields from the API, PATCHes on save, redirects back to detail page
-- **app/(dashboard)/claims/[id]/page.tsx** — added Edit Claim button (with Pencil icon) to action bar, visible only when claim status is DRAFT or PENDING
-
----
-
-### 2026-03-16 — Fix denial risk gauge centering
-
-- **app/(dashboard)/claims/[id]/page.tsx** — replaced broken CSS clip-path gauge with proper SVG `<path>` arc using `strokeDasharray`/`strokeDashoffset`. Arc now renders perfectly centered inside the card at all times.
+- **app/icon.svg** — created Vindica mark SVG with transparent background: two pill rects at 15% opacity with 50% stroke, solid center circle, four accent dots at 35% opacity. Initial color #5B3FD4, then darkened to `#3B1FA8` for better tab visibility.
+- Next.js App Router auto-serves `app/icon.svg` as the favicon — no `<link>` tag needed.
 
 ---
 
-### 2026-03-17 — Restore localhost:3000, restart app
+### 2026-03-16 — Switch Default AI Model to Haiku 4.5
 
-- `.env.local` — reverted `NEXTAUTH_URL` back to `http://localhost:3000`
-- Killed all node processes and restarted `npm run dev` on port 3000
-
----
-
-### 2026-03-17 — Add spacing in CDT Code Review table
-
-- **app/(dashboard)/claims/[id]/page.tsx** — added `pr-6` to Code and Issue columns so text doesn't run together
+- All three AI modules (`claim-analyzer.ts`, `appeal-generator.ts`, `cdt-optimizer.ts`) updated from `claude-sonnet-4-20250514` to `claude-haiku-4-5-20251001` as the default model.
 
 ---
 
-### 2026-03-17 — Fix risk factor text truncation
+### 2026-03-16 — Claim Edit Page
 
-- **app/(dashboard)/claims/[id]/page.tsx** — removed `truncate` class and `min-w-0` from risk factor row so full sentence displays instead of cutting off with "..."
-
----
-
-### 2026-03-17 — Fix router cache causing stale dashboard KPIs
-
-- **next.config.ts** — added `experimental.staleTimes.dynamic = 0` to disable the Next.js client-side router cache for dynamic pages. Without this, navigating to /dashboard via the sidebar served a cached page for up to 30 seconds even though the server data was fresh.
+- **app/(dashboard)/claims/[id]/edit/page.tsx** — new edit page: pre-populates all claim fields from the API, PATCHes on save, redirects back to detail page.
+- **app/(dashboard)/claims/[id]/page.tsx** — added Edit Claim button (Pencil icon) in action bar, visible only when claim status is DRAFT or PENDING.
 
 ---
 
-### 2026-03-17 — Fix Revenue at Risk not updating on dashboard
+### 2026-03-16 — Fix Denial Risk Gauge Centering
 
-- **app/(dashboard)/dashboard/page.tsx** — added `export const dynamic = 'force-dynamic'` to prevent Next.js from caching the server component. Without this, KPIs (Revenue at Risk, denial rate, etc.) showed stale values after claim updates.
-
----
-
-### 2026-03-17 — Show new fields on claim detail page
-
-- **app/(dashboard)/claims/[id]/page.tsx** — added to Claim interface: `toothNumbers`, `providerNpi`, `preAuthNumber`, doc booleans. Summary card now shows: tooth number pills (purple), provider NPI, pre-auth number, and a documentation row with green ✓ / gray ✗ badges for all four doc flags.
+- **app/(dashboard)/claims/[id]/page.tsx** — replaced broken CSS clip-path gauge with proper SVG `<path>` arc using `strokeDasharray`/`strokeDashoffset`. Arc renders perfectly centered at all times.
 
 ---
 
-### 2026-03-17 — Clear stale Prisma client after tooth/NPI/preauth migration
+### 2026-03-16 — Claude Hooks: Auto-Read and Auto-Update Retrospective
 
-- Killed node, deleted `.next`, ran `prisma generate`, restarted dev server
-- **Rule:** After every schema migration, always run `rm -rf .next && npx prisma generate` before restarting — Turbopack caches the old Prisma client and will throw `PrismaClientValidationError` for any new fields until cleared
-
----
-
-### 2026-03-17 — Sync edit claim page with new claim form
-
-- **app/(dashboard)/claims/[id]/edit/page.tsx** — added all three new fields missing from edit form: tooth numbers multi-input, provider NPI field, conditional pre-auth number input. All fields load from API on mount and are sent in the PATCH body, flowing through to AI analysis on re-analyze.
+- **.claude/settings.local.json** — added two hooks:
+  1. `UserPromptSubmit` hook: reads RETROSPECTIVE.md and injects it into Claude's context at the start of every prompt, so Claude always knows the project state.
+  2. `Stop` hook: fires after every Claude response, echoing a reminder to update RETROSPECTIVE.md immediately. Ensures the retrospective never goes stale.
 
 ---
 
-### 2026-03-17 — Add tooth numbers, provider NPI, pre-auth number
+### 2026-03-16 — Login Page Cleanup
 
-- **prisma/schema.prisma** — added `toothNumbers String[]`, `providerNpi String?`, `preAuthNumber String?` to Claim model
-- **migration** — `20260317032114_add_tooth_provider_preauth`
-- **types/index.ts** — added three fields to `ClaimInput`
-- **lib/ai/claim-analyzer.ts** — prompt now includes tooth numbers, provider NPI, and pre-auth number so AI can flag missing tooth numbers for procedures like D2740, D4341, D6010
-- **app/api/claims/[id]/analyze/route.ts** — passes new fields to `analyzeClaim()`
-- **app/api/claims/[id]/route.ts** — PATCH route handles saving all three fields
-- **app/(dashboard)/claims/new/page.tsx** — Tooth Numbers multi-input below CDT Codes; Treating Provider NPI in Patient Information; Pre-auth Number input revealed conditionally when pre-auth checkbox is checked
-- `.next` cache cleared after migration
+- **app/(auth)/login/page.tsx** — removed demo credentials hint box, updated email placeholder to `you@example.com`.
+- **.env.example** — deleted (real API key in `.env.local`).
 
 ---
 
-### 2026-03-16 — Move AI model selector to Settings only
+### 2026-03-16 — Fix Claim Edit Not Saving (Critical PATCH Bug)
 
-- Removed inline model dropdown from claim detail page and appeals page
-- Model is now read silently from localStorage via `getStoredModel()` on both pages
-- Settings page remains the only place to change the model
-
----
-
-### 2026-03-16 — Fix AI not seeing documentation checklist
-
-- **app/api/claims/[id]/analyze/route.ts** — the four doc fields (`xraysAttached`, `perioCharting`, `preAuthObtained`, `narrativeIncluded`) existed in `ClaimInput` type but were never passed from the route to `analyzeClaim()`. AI always saw them as undefined and couldn't adjust the risk score. Now passed from the DB claim object.
+- **Root cause:** `app/api/claims/[id]/route.ts` PATCH handler was doing `data: body` — passing the raw parsed request body directly to Prisma. This throws `PrismaClientValidationError` when the body contains unknown fields (e.g. `id`, read-only relations) or when DateTime fields are strings instead of Date objects.
+- **Fix:** Explicitly destructured only the allowed fields and coerced all DateTime fields with `new Date()`. PATCH catch block now returns the actual error message instead of generic "Internal server error".
 
 ---
 
-### 2026-03-16 — App started
+### 2026-03-16 — Fix Documentation Checklist Not Saving
 
-- Ran `npm run dev` in background after clearing `.next` cache — app responding on http://localhost:3000
-
----
-
-### 2026-03-16 — Clear Turbopack cache after Prisma migration
-
-- Deleted `.next` folder — Turbopack bundles and caches the Prisma client inside `.next/dev/server/chunks/`. Running `prisma generate` updates `node_modules` but Turbopack's cache still serves the old bundle. Must delete `.next` and do a clean `npm run dev` restart after any schema migration.
+- **Root cause:** The four boolean doc fields (`xraysAttached`, `perioCharting`, `preAuthObtained`, `narrativeIncluded`) were referenced in the AI prompt and edit form but never existed in the database schema.
+- **prisma/schema.prisma** — added four Boolean fields to Claim model (all default false).
+- **prisma/migrations/20260316211903_add_documentation_fields** — migration applied.
+- **app/api/claims/[id]/route.ts** — PATCH route now accepts and saves the four doc fields.
+- **app/(dashboard)/claims/[id]/edit/page.tsx** — loads doc values from API on mount, sends them in PATCH body.
 
 ---
 
-### 2026-03-16 — Fix stale Prisma client after documentation fields migration
+### 2026-03-16 — Fix AI Not Seeing Documentation Checklist Values
 
-- Ran `npx prisma generate` to regenerate the Prisma client after the `add_documentation_fields` migration
-- **Root cause:** Turbopack caches the Prisma client in memory; after `prisma migrate dev` the client wasn't rebuilt, so `prisma.claim.update()` threw `PrismaClientValidationError` for unknown fields
-- **Fix:** Run `npx prisma generate` then restart the dev server (Ctrl+C → `npm run dev`) after any schema migration
-
----
-
-### 2026-03-16 — Expose real PATCH error for debugging
-
-- **app/api/claims/[id]/route.ts** — PATCH catch block now returns the actual error message instead of generic "Internal server error"
-- **app/(dashboard)/claims/[id]/edit/page.tsx** — alert now shows the real error from the API response
+- **Root cause:** The four doc boolean fields existed in `ClaimInput` type and were being saved to DB correctly, but `app/api/claims/[id]/analyze/route.ts` was never passing them to `analyzeClaim()`. Claude always received `undefined` for all four and could not adjust the risk score based on documentation.
+- **Fix:** All four fields now explicitly passed from the DB claim object to `analyzeClaim()`.
 
 ---
 
-### 2026-03-16 — Fix documentation checklist not saving
+### 2026-03-16 — Turbopack Cache: Rule Established
 
-- **prisma/schema.prisma** — added four Boolean fields to Claim model: `xraysAttached`, `perioCharting`, `preAuthObtained`, `narrativeIncluded` (all default false)
-- **prisma/migrations/20260316211903_add_documentation_fields** — migration applied
-- **app/api/claims/[id]/route.ts** — PATCH route now accepts and saves the four doc fields
-- **app/(dashboard)/claims/[id]/edit/page.tsx** — edit page now loads doc field values from the API on mount and sends them on save
-
----
-
-### 2026-03-16 — Fix claim edit not saving
-
-- **app/api/claims/[id]/route.ts** — PATCH route was doing `data: body` (raw request body passed directly to Prisma), which fails when the body contains unknown or non-updatable fields. Fixed by explicitly destructuring and mapping only the allowed fields, with `new Date()` coercion for all DateTime columns.
-
----
-
-### 2026-03-16 — Darken favicon purple
-
-- **app/icon.svg** — changed all purple from `#5B3FD4` to `#3B1FA8` for better visibility in browser tab
-
----
-
-### 2026-03-16 — Vindica SVG favicon (transparent)
-
-- **app/icon.svg** — Vindica mark on transparent background: two pill rects (fill #5B3FD4 at 15% opacity, stroke at 50%), solid center circle (#5B3FD4), four accent dots (35% opacity). No background rect. Hard refresh (Ctrl+Shift+R) required to see change in browser tab.
-
----
-
-### 2026-03-16 — Fix browser tab title
-
-- **app/layout.tsx** — changed `title` metadata from `'ClaimGuard AI — Dental Claim Denial Predictor'` to `'Vindica — Dental Claim Denial Predictor'`
-
----
-
-### 2026-03-16 — Enforce retrospective update after every command
-
-- **.claude/settings.local.json** — added `Stop` hook that fires after every Claude response, echoing a reminder to update RETROSPECTIVE.md. Combined with the existing `UserPromptSubmit` hook (reads the file before each prompt), this creates a full read-on-start / write-on-finish loop.
-
----
-
-### 2026-03-16 — Login page cleanup & env cleanup
-
-- **app/(auth)/login/page.tsx** — removed demo credentials hint box (`Demo: demo@claimguard.ai / demo1234`), updated email input placeholder from `demo@claimguard.ai` to `you@example.com`
-- **.env.example** — deleted (user has real API key in `.env.local`)
-- **.claude/settings.local.json** — added `UserPromptSubmit` hook to auto-inject RETROSPECTIVE.md at start of every conversation
+- **Root cause:** Turbopack bundles and caches the Prisma client inside `.next/dev/server/chunks/`. Running `npx prisma generate` updates `node_modules/@prisma/client` but Turbopack's in-memory bundle cache still serves the stale version — any new schema field throws `PrismaClientValidationError`.
+- **Fix / Rule:** After every `prisma migrate dev`, always run `rm -rf .next && npx prisma generate` before restarting the dev server. Do not just restart — the cache must be deleted.
 
 ---
 
 ### 2026-03-16 — AI Model Selector
 
-- **lib/constants.ts** — added `AI_MODELS` array (Haiku 4.5, Sonnet 4.6, Opus 4.6) and `DEFAULT_AI_MODEL = 'claude-haiku-4-5-20251001'`
-- **lib/hooks/useAIModel.ts** — new file: `useAIModel()` React hook (reads/writes to `localStorage`), `getStoredModel()` for non-hook contexts
-- **lib/ai/claim-analyzer.ts** — added `model` parameter with default to `DEFAULT_AI_MODEL`
-- **lib/ai/appeal-generator.ts** — added `model` parameter with default to `DEFAULT_AI_MODEL`
-- **app/api/claims/[id]/analyze/route.ts** — reads `model` from request body, passes to `analyzeClaim()`
-- **app/api/appeals/[id]/generate/route.ts** — reads `model` from request body, passes to `generateAppealLetter()`
-- **app/(dashboard)/settings/page.tsx** — rebuilt as client component with AI Model card: selectable radio-style buttons for each model, persists selection to localStorage via `useAIModel` hook
-- **app/(dashboard)/claims/[id]/page.tsx** — added `selectedModel` state (seeded from `getStoredModel()`), compact `<select>` dropdown next to Run Analysis button, model passed in analysis fetch body
-- **app/(dashboard)/appeals/[id]/page.tsx** — same pattern: model dropdown next to Regenerate button, model passed in regenerate fetch body
+Added user-selectable AI model with localStorage persistence. Default is Haiku 4.5 (fast/cheap); users can upgrade to Sonnet or Opus in Settings.
+
+- **lib/constants.ts** — added `AI_MODELS` array (Haiku 4.5, Sonnet 4.6, Opus 4.6) and `DEFAULT_AI_MODEL = 'claude-haiku-4-5-20251001'`.
+- **lib/hooks/useAIModel.ts** — new file: `useAIModel()` React hook (reads/writes localStorage key `vindica_ai_model`), `getStoredModel()` for server/non-hook contexts.
+- **lib/ai/claim-analyzer.ts** — added `model` parameter with default `DEFAULT_AI_MODEL`.
+- **lib/ai/appeal-generator.ts** — added `model` parameter with default `DEFAULT_AI_MODEL`.
+- **app/api/claims/[id]/analyze/route.ts** — reads `model` from request body, passes to `analyzeClaim()`.
+- **app/api/appeals/[id]/generate/route.ts** — reads `model` from request body, passes to `generateAppealLetter()`.
+- **app/(dashboard)/settings/page.tsx** — rebuilt as `'use client'` component with AI Model card: radio-style buttons for each model, persists to localStorage via `useAIModel` hook.
+- Model dropdowns were initially added to the claims and appeals pages, then moved to Settings only (see next entry).
+
+---
+
+### 2026-03-16 — Move AI Model Selector to Settings Only
+
+- Removed inline model dropdown from `app/(dashboard)/claims/[id]/page.tsx` and `app/(dashboard)/appeals/[id]/page.tsx`.
+- Both pages now call `getStoredModel()` silently on analysis/generation — no UI dropdown shown.
+- Settings page is the single place to change the model.
+
+---
+
+### 2026-03-17 — Add Tooth Numbers, Treating Provider NPI, Pre-Auth Number
+
+Three new fields added across the full stack so the AI has all clinical and administrative context.
+
+- **prisma/schema.prisma** — added to Claim model: `toothNumbers String[]`, `providerNpi String?`, `preAuthNumber String?`.
+- **prisma/migrations/20260317032114_add_tooth_provider_preauth** — migration applied; `.next` cache cleared.
+- **types/index.ts** — added `toothNumbers?`, `providerNpi?`, `preAuthNumber?` to `ClaimInput`.
+- **lib/ai/claim-analyzer.ts** — prompt now includes all three fields so AI can flag: missing tooth numbers for D2740/D4341/D6010, absent NPI for billing validation, missing pre-auth number when pre-auth checkbox is checked.
+- **app/api/claims/[id]/analyze/route.ts** — passes all three new fields to `analyzeClaim()`.
+- **app/api/claims/[id]/route.ts** — PATCH route saves all three fields.
+- **app/(dashboard)/claims/new/page.tsx** — added Tooth Numbers multi-input (numeric 1–32, below CDT Codes), Treating Provider NPI (in Patient Information section), Pre-auth Number (conditionally revealed when pre-auth checkbox is checked).
+- **app/(dashboard)/claims/[id]/edit/page.tsx** — full rewrite to match new claim form: all three fields load from API on mount, are editable, and sent in PATCH body.
+- **app/(dashboard)/claims/[id]/page.tsx** — summary card now shows: tooth number pills (purple), Provider NPI, Pre-auth Number, and a documentation row with green ✓ / gray ✗ badges for all four doc flags.
+
+---
+
+### 2026-03-17 — Fix Dashboard KPIs Showing Stale Data (Two-Layer Cache Fix)
+
+Two separate caching layers were preventing dashboard KPIs (Revenue at Risk, denial rate, etc.) from updating after claim changes.
+
+- **Layer 1 — Server component cache:** `app/(dashboard)/dashboard/page.tsx` — added `export const dynamic = 'force-dynamic'` to prevent Next.js from caching the server component render.
+- **Layer 2 — Router cache:** `next.config.ts` — added `experimental.staleTimes.dynamic = 0` to disable the Next.js client-side router cache (default 30s TTL). Without this, navigating to /dashboard via the sidebar served a cached page even though the server was fetching fresh data.
+
+---
+
+### 2026-03-17 — Fix Risk Factor Text Truncating
+
+- **app/(dashboard)/claims/[id]/page.tsx** — removed `truncate` CSS class and `min-w-0` from risk factor text span and its flex container. Factors now display the full sentence instead of cutting off with "...".
+
+---
+
+### 2026-03-17 — Add Spacing in CDT Code Review Table
+
+- **app/(dashboard)/claims/[id]/page.tsx** — added `pr-6` padding to Code and Issue columns in the CDT Code Review table so text doesn't run together.
+
+---
+
+### 2026-03-17 — Restore localhost:3000
+
+- `.env.local` — reverted `NEXTAUTH_URL` back to `http://localhost:3000` (had drifted to 3001 after a port conflict when clearing `.next` while the old server was still running).
+- Killed stale node process, restarted dev server on port 3000.
 
 ---
 
 ### 2026-03-17 — Anti-Hallucination RAG Knowledge Base
 
-Built a structured static knowledge base injected into every AI prompt to ground analysis in real dental billing rules instead of Claude's general training.
+Built a structured static knowledge base that gets selectively injected into every AI prompt, grounding analysis in real dental billing rules instead of Claude's general training knowledge.
 
-**Files created (all under `lib/knowledge/`):**
-- **cdt-codes.ts** — CDT code entry for every code in the app (D0120–D7240): description, required documentation checklist, bundling conflicts, frequency limits, pre-auth flag, supporting ICD-10 diagnosis codes
-- **payer-policies.ts** — per-payer rules keyed by payerId for all 8 seed payers (Delta Dental, Anthem, Cigna, Aetna, United Concordia, MetLife, Guardian, Humana): frequency rules, coding preferences/downcode risks, documentation requirements, bundling warnings, appeal tips
-- **icd10-support.ts** — ICD-10 → CDT support mapping with justification text (K05.x perio codes, K02.x caries, K08.x tooth loss, K04.x pulpal disease, K01.x impactions, Z01.x preventive, S02.x trauma, etc.)
-- **clinical-guidelines.ts** — citable ADA/AAP guideline snippets by category (periodontalTherapy, implants, crowns, periodontalMaintenance, extractionCriteria, diagnosticRadiographs) + `CDT_TO_GUIDELINE_MAP` linking codes to relevant guideline categories
-- **context-builder.ts** — `buildClaimContext(claim)` and `buildAppealContext(cdtCodes, payerId, denialReason)` assemblers: inject only the CDT, payer policy, diagnosis support, and guideline sections relevant to the specific claim's codes
+**Problem solved:** Every AI call was relying on Claude's training to fill in CDT code requirements, payer frequency rules, bundling policies, and clinical guidelines — producing inconsistent, sometimes fabricated reasoning. This system replaces that with verified, deterministic rules injected per claim.
+
+**Files created (`lib/knowledge/`):**
+- **cdt-codes.ts** — 16 CDT code entries (D0120–D7240): human-readable description, required documentation checklist (specific line items), bundling conflicts, frequency limit, pre-auth flag, and supporting ICD-10 diagnosis codes per code.
+- **payer-policies.ts** — structured rules for all 8 seed payers (Delta Dental, Anthem BCBS, Cigna, Aetna, United Concordia, MetLife, Guardian, Humana): per-code frequency rules, coding preferences and downcode risks, per-code documentation requirements, bundling warnings, and payer-specific appeal tips.
+- **icd10-support.ts** — 30+ ICD-10 codes mapped to the CDT procedures they clinically support, with citable justification text per code. Covers: K05.x periodontal, K02.x caries, K08.x tooth loss, K04.x pulpal disease, K01.x impactions, Z01.x preventive, S02.x trauma.
+- **clinical-guidelines.ts** — citable ADA/AAP guideline snippets for: periodontalTherapy, implants, crowns, periodontalMaintenance, extractionCriteria, diagnosticRadiographs. Includes `CDT_TO_GUIDELINE_MAP` linking procedure codes to applicable guideline categories.
+- **context-builder.ts** — `buildClaimContext(claim)` and `buildAppealContext(cdtCodes, payerId, denialReason)`: selectively assembles only the CDT code entries, payer policy rules, ICD-10 support rows, and guideline snippets that are relevant to the specific claim's codes. Injects as a `[KNOWLEDGE BASE]` block.
 
 **Files modified:**
-- **lib/ai/claim-analyzer.ts** — imports `buildClaimContext`, appends `[KNOWLEDGE BASE]` block to every claim analysis prompt
-- **lib/ai/appeal-generator.ts** — imports `buildAppealContext`, adds `payerId` to `ClaimForAppeal` interface, appends `[KNOWLEDGE BASE]` block (including payer-specific appeal tips) to every appeal generation prompt
-- **lib/ai/prompts.ts** — strengthened both system prompts with `CRITICAL INSTRUCTION` blocks instructing Claude to treat injected knowledge as ground truth and prioritize it over general training
+- **lib/ai/claim-analyzer.ts** — imports `buildClaimContext`, appends `[KNOWLEDGE BASE]` block to every analysis prompt.
+- **lib/ai/appeal-generator.ts** — imports `buildAppealContext`, adds `payerId` to `ClaimForAppeal` interface, appends `[KNOWLEDGE BASE]` block (including payer-specific appeal tips matched to the denial reason) to every appeal prompt.
+- **lib/ai/prompts.ts** — both system prompts now have `CRITICAL INSTRUCTION` sections: Claude is told to treat the injected knowledge as ground truth, prioritize it over general training, and cite it explicitly in analysis and appeal letters.
 
 **What this prevents:**
-- Wrong frequency limits → exact payer rules injected per claim
-- Made-up documentation requirements → CDT-specific checklist injected
-- Incorrect bundling rules → explicit conflict list per code
-- Vague clinical justification → ADA/AAP guideline snippets injected
-- Inconsistent appeal arguments → payer-specific appeal tips injected
-- Wrong ICD-10 → CDT logic → support matrix injected for claim's diagnosis codes
+
+| Hallucination type | Fix |
+|---|---|
+| Wrong frequency limits | Exact payer rules injected per claim |
+| Made-up documentation requirements | CDT-specific checklist injected |
+| Incorrect bundling rules | Explicit conflict list per code |
+| Vague clinical justification | ADA/AAP guideline snippets injected |
+| Inconsistent appeal arguments | Payer-specific appeal tips injected |
+| Wrong ICD-10 → CDT support logic | Support matrix injected for the claim's diagnosis codes |
 
 ---
 
@@ -328,3 +291,6 @@ Built a structured static knowledge base injected into every AI prompt to ground
 | `sonner` instead of `toast` | shadcn v4 deprecated the toast component |
 | JWT sessions | No database session overhead; simpler for MVP |
 | Server component dashboard | Real DB data without client-side fetch waterfall |
+| Static knowledge base over vector DB | No infrastructure needed; deterministic injection; fast; sufficient for finite CDT/payer rule set |
+| `force-dynamic` + `staleTimes.dynamic: 0` | Two-layer fix required to prevent stale KPI data on dashboard |
+| Turbopack cache must be deleted after migrations | Turbopack caches Prisma client in `.next`; `prisma generate` alone does not invalidate it |
