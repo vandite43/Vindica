@@ -23,8 +23,11 @@ Claim Details:
 - Plan Type: ${claim.planType || 'Unknown'}
 - Service Date: ${claim.serviceDate}
 - CDT Codes: ${claim.cdtCodes.join(', ')}
+- Tooth Numbers: ${claim.toothNumbers?.length ? claim.toothNumbers.join(', ') : 'Not specified'}
 - Diagnosis Codes: ${claim.diagnosisCodes.join(', ')}
 - Total Amount: $${claim.totalAmount}
+- Treating Provider NPI: ${claim.providerNpi || 'Not provided'}
+- Pre-auth Number: ${claim.preAuthNumber || 'N/A'}
 - Documentation attached: X-rays=${claim.xraysAttached}, Perio Chart=${claim.perioCharting}, Pre-auth=${claim.preAuthObtained}, Narrative=${claim.narrativeIncluded}
 ${payerContext}
 

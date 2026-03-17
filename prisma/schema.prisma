@@ -41,8 +41,11 @@ model Claim {
   claimDate         DateTime
   serviceDate       DateTime
   cdtCodes          String[]
+  toothNumbers      String[]
   diagnosisCodes    String[]
   totalAmount       Float
+  providerNpi       String?
+  preAuthNumber     String?
   xraysAttached     Boolean       @default(false)
   perioCharting     Boolean       @default(false)
   preAuthObtained   Boolean       @default(false)

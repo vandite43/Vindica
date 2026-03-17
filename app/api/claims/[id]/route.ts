@@ -39,10 +39,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (claim.practice.userId !== session.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const {
-      patientName, patientDob, patientInsuranceId,
+      patientName, patientDob, patientInsuranceId, providerNpi,
       payerId, payerName, planType,
-      claimDate, serviceDate, cdtCodes, diagnosisCodes, totalAmount,
-      xraysAttached, perioCharting, preAuthObtained, narrativeIncluded,
+      claimDate, serviceDate, cdtCodes, toothNumbers, diagnosisCodes, totalAmount,
+      preAuthNumber, xraysAttached, perioCharting, preAuthObtained, narrativeIncluded,
       status, submittedAt, deniedAt, denialReason, denialCode,
     } = body;
 
@@ -58,8 +58,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(claimDate !== undefined && { claimDate: new Date(claimDate) }),
         ...(serviceDate !== undefined && { serviceDate: new Date(serviceDate) }),
         ...(cdtCodes !== undefined && { cdtCodes }),
+        ...(toothNumbers !== undefined && { toothNumbers }),
         ...(diagnosisCodes !== undefined && { diagnosisCodes }),
         ...(totalAmount !== undefined && { totalAmount }),
+        ...(providerNpi !== undefined && { providerNpi }),
+        ...(preAuthNumber !== undefined && { preAuthNumber }),
         ...(xraysAttached !== undefined && { xraysAttached }),
         ...(perioCharting !== undefined && { perioCharting }),
         ...(preAuthObtained !== undefined && { preAuthObtained }),

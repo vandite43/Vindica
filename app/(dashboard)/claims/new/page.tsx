@@ -22,12 +22,15 @@ export default function NewClaimPage() {
   const [payers, setPayers] = useState<Payer[]>([]);
   const [loading, setLoading] = useState(false);
   const [cdtCodes, setCdtCodes] = useState(['']);
+  const [toothNumbers, setToothNumbers] = useState(['']);
   const [diagnosisCodes, setDiagnosisCodes] = useState(['']);
   const [docs, setDocs] = useState({ xrays: false, perioChart: false, preAuth: false, narrative: false });
+  const [preAuthNumber, setPreAuthNumber] = useState('');
   const [form, setForm] = useState({
     patientName: '',
     patientDob: '',
     patientInsuranceId: '',
+    providerNpi: '',
     payerId: '',
     payerName: '',
     planType: 'PPO',
@@ -56,7 +59,10 @@ export default function NewClaimPage() {
         ...form,
         payerName: selectedPayer?.name || form.payerName,
         cdtCodes: cdtCodes.filter(Boolean),
+        toothNumbers: toothNumbers.filter(Boolean),
         diagnosisCodes: diagnosisCodes.filter(Boolean),
+        providerNpi: form.providerNpi || undefined,
+        preAuthNumber: docs.preAuth ? preAuthNumber || undefined : undefined,
         xraysAttached: docs.xrays,
         perioCharting: docs.perioChart,
         preAuthObtained: docs.preAuth,
@@ -74,6 +80,15 @@ export default function NewClaimPage() {
       alert('Failed to create claim. Please check all fields and try again.');
     }
   }
+
+  const addToothNumber = () => setToothNumbers([...toothNumbers, '']);
+  const removeToothNumber = (i: number) => setToothNumbers(toothNumbers.filter((_, idx) => idx !== i));
+  const updateToothNumber = (i: number, val: string) => {
+    const n = val.replace(/\D/g, '').slice(0, 2);
+    const updated = [...toothNumbers];
+    updated[i] = n;
+    setToothNumbers(updated);
+  };
 
   const addCdtCode = () => setCdtCodes([...cdtCodes, '']);
   const removeCdtCode = (i: number) => setCdtCodes(cdtCodes.filter((_, idx) => idx !== i));
@@ -119,6 +134,15 @@ export default function NewClaimPage() {
                   onChange={e => setForm({ ...form, patientInsuranceId: e.target.value })}
                   placeholder="e.g., DD-123456789"
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Treating Provider NPI</Label>
+                <Input
+                  value={form.providerNpi}
+                  onChange={e => setForm({ ...form, providerNpi: e.target.value })}
+                  placeholder="e.g., 1234567890"
+                  className="font-mono"
                 />
               </div>
             </CardContent>
@@ -224,6 +248,30 @@ export default function NewClaimPage() {
               </div>
 
               <div className="space-y-2">
+                <Label>Tooth Numbers</Label>
+                <p className="text-xs text-gray-500">Enter tooth numbers 1–32 for the treated teeth</p>
+                {toothNumbers.map((num, i) => (
+                  <div key={i} className="flex gap-2">
+                    <Input
+                      value={num}
+                      onChange={e => updateToothNumber(i, e.target.value)}
+                      placeholder="e.g., 14"
+                      className="font-mono w-24"
+                      inputMode="numeric"
+                    />
+                    {toothNumbers.length > 1 && (
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeToothNumber(i)}>
+                        <Trash2 className="h-4 w-4 text-red-400" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={addToothNumber}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Tooth Number
+                </Button>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Diagnosis Codes (ICD-10)</Label>
                 {diagnosisCodes.map((code, i) => (
                   <div key={i} className="flex gap-2">
@@ -266,22 +314,34 @@ export default function NewClaimPage() {
             <CardHeader>
               <CardTitle className="text-base">Documentation Checklist</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
-              {[
+            <CardContent className="space-y-3">
+              {([
                 { key: 'xrays', label: 'X-rays attached' },
                 { key: 'perioChart', label: 'Periodontal chart included' },
                 { key: 'preAuth', label: 'Pre-authorization obtained' },
                 { key: 'narrative', label: 'Narrative/clinical notes included' },
-              ].map(({ key, label }) => (
-                <div key={key} className="flex items-center gap-2">
-                  <Checkbox
-                    id={key}
-                    checked={docs[key as keyof typeof docs]}
-                    onCheckedChange={v => setDocs({ ...docs, [key]: !!v })}
-                  />
-                  <Label htmlFor={key} className="cursor-pointer font-normal">
-                    {label}
-                  </Label>
+              ] as { key: keyof typeof docs; label: string }[]).map(({ key, label }) => (
+                <div key={key}>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={key}
+                      checked={docs[key]}
+                      onCheckedChange={v => setDocs({ ...docs, [key]: !!v })}
+                    />
+                    <Label htmlFor={key} className="cursor-pointer font-normal">
+                      {label}
+                    </Label>
+                  </div>
+                  {key === 'preAuth' && docs.preAuth && (
+                    <div className="mt-2 ml-6">
+                      <Input
+                        value={preAuthNumber}
+                        onChange={e => setPreAuthNumber(e.target.value)}
+                        placeholder="Pre-authorization number"
+                        className="max-w-xs"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </CardContent>

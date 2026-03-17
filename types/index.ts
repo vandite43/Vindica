@@ -8,8 +8,11 @@ export interface ClaimInput {
   claimDate: string;
   serviceDate: string;
   cdtCodes: string[];
+  toothNumbers?: string[];
   diagnosisCodes: string[];
   totalAmount: number;
+  providerNpi?: string;
+  preAuthNumber?: string;
   xraysAttached?: boolean;
   perioCharting?: boolean;
   preAuthObtained?: boolean;
