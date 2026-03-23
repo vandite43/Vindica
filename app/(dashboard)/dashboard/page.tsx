@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import DashboardClient from '@/components/dashboard/DashboardClient';
+import { listClaims } from '@/lib/db/claims';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +12,7 @@ async function getDashboardData(userId: string) {
   if (!practice) return null;
 
   const [claims, appeals] = await Promise.all([
-    prisma.claim.findMany({
-      where: { practiceId: practice.id },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    }),
+    listClaims(practice.id, {}),
     prisma.appeal.findMany({
       where: { claim: { practiceId: practice.id } },
     }),

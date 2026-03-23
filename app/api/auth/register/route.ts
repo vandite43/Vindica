@@ -13,16 +13,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
     }
     const hashed = await bcrypt.hash(password, 12);
+
+    // Create user first, then practice, then link practiceId back to user
     const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashed,
-        practice: {
-          create: { name: practiceName },
-        },
-      },
+      data: { name, email, password: hashed, role: 'ADMIN' },
     });
+    const practice = await prisma.practice.create({
+      data: { name: practiceName, userId: user.id },
+    });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { practiceId: practice.id },
+    });
+
     return NextResponse.json({ id: user.id, email: user.email });
   } catch (error) {
     console.error(error);

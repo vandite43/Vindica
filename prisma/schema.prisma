@@ -11,21 +11,39 @@ model User {
   email         String    @unique
   name          String?
   password      String?
-  practice      Practice?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          Role      @default(BILLER)
+  isActive      Boolean   @default(true)
+  mfaEnabled     Boolean   @default(true)
+  mfaCode        String?
+  mfaCodeExpiry  DateTime?
+  mfaAttempts    Int       @default(0)
+  mfaLockedUntil DateTime?
+  mfaToken       String?
+  mfaTokenExpiry DateTime?
+  practice       Practice?
+  practiceId     String?
+  memberOf       Practice?  @relation("PracticeMembers", fields: [practiceId], references: [id])
+  auditLogs      AuditLog[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Practice {
-  id            String    @id @default(cuid())
-  name          String
-  npi           String?
-  address       String?
-  state         String?
-  userId        String    @unique
-  user          User      @relation(fields: [userId], references: [id])
-  claims        Claim[]
-  createdAt     DateTime  @default(now())
+  id             String     @id @default(cuid())
+  name           String
+  npi            String?
+  npiType2       String?    // Organization NPI (Box 49)
+  taxId          String?    // EIN / Tax ID
+  address        String?
+  billingAddress String?    // If different from address
+  state          String?
+  userId         String     @unique
+  user           User       @relation(fields: [userId], references: [id])
+  members        User[]     @relation("PracticeMembers")
+  claims         Claim[]
+  providers      Provider[]
+  monthEndCloses MonthEndClose[]
+  createdAt      DateTime   @default(now())
 }
 
 model Claim {
@@ -33,7 +51,7 @@ model Claim {
   practiceId        String
   practice          Practice      @relation(fields: [practiceId], references: [id])
   patientName       String
-  patientDob        DateTime
+  patientDob        String    // encrypted ISO date string (AES-256-GCM)
   patientInsuranceId String
   payerId           String
   payerName         String
@@ -42,7 +60,7 @@ model Claim {
   serviceDate       DateTime
   cdtCodes          String[]
   toothNumbers      String[]
-  diagnosisCodes    String[]
+  diagnosisCodes    String    // encrypted JSON array (AES-256-GCM)
   totalAmount       Float
   providerNpi       String?
   preAuthNumber     String?
@@ -94,6 +112,45 @@ model Payer {
   createdAt       DateTime  @default(now())
 }
 
+model AuditLog {
+  id          String       @id @default(cuid())
+  timestamp   DateTime     @default(now())
+  userId      String?
+  user        User?        @relation(fields: [userId], references: [id])
+  userEmail   String
+  action      AuditAction
+  resource    String       // e.g. "claim:clm_abc123" — no PHI
+  outcome     AuditOutcome
+  ipAddress   String?
+  details     String?      // non-PHI context only
+
+  @@index([timestamp(sort: Desc)])
+  @@index([userEmail])
+  @@index([action])
+}
+
+enum Role {
+  ADMIN
+  OFFICE_MANAGER
+  BILLER
+  PROVIDER
+}
+
+enum AuditAction {
+  LOGIN
+  VIEW
+  CREATE
+  UPDATE
+  DELETE
+  UPDATE_USER_ROLE
+  MONTH_END_CHECKLIST_ITEM
+}
+
+enum AuditOutcome {
+  SUCCESS
+  FAILURE
+}
+
 enum ClaimStatus {
   DRAFT
   PENDING
@@ -118,4 +175,93 @@ enum AppealStatus {
   SUBMITTED
   WON
   LOST
+}
+
+enum CredentialStatus {
+  NOT_STARTED
+  APPLICATION_SENT
+  IN_PROCESS
+  CREDENTIALED
+  EXPIRED
+  TERMINATED
+  DENIED
+}
+
+model Provider {
+  id            String               @id @default(cuid())
+  practiceId    String
+  practice      Practice             @relation(fields: [practiceId], references: [id])
+  firstName     String
+  lastName      String
+  credentials   String
+  npiType1      String
+  licenseNumber String
+  licenseState  String
+  licenseExpiry DateTime
+  deaNumber     String?
+  specialty     String
+  startDate     DateTime
+  active        Boolean              @default(true)
+  credentialing ProviderCredential[]
+  events        CredentialingEvent[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model ProviderCredential {
+  id              String           @id @default(cuid())
+  providerId      String
+  provider        Provider         @relation(fields: [providerId], references: [id])
+  payerName       String
+  payerId         String
+  status          CredentialStatus @default(NOT_STARTED)
+  applicationDate DateTime?
+  approvalDate    DateTime?
+  expiryDate      DateTime?
+  contractType    String?
+  providerNumber  String?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model CredentialingEvent {
+  id         String   @id @default(cuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  payerName  String?
+  event      String
+  updatedBy  String
+  notes      String?
+  createdAt  DateTime @default(now())
+}
+
+model MonthEndClose {
+  id          String         @id @default(cuid())
+  practiceId  String
+  practice    Practice       @relation(fields: [practiceId], references: [id])
+  month       Int
+  year        Int
+  notes       String?
+  closedAt    DateTime?
+  items       MonthEndItem[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([practiceId, month, year])
+}
+
+model MonthEndItem {
+  id        String        @id @default(cuid())
+  closeId   String
+  close     MonthEndClose @relation(fields: [closeId], references: [id])
+  phase     Int
+  itemKey   String
+  checked   Boolean       @default(false)
+  checkedBy String?
+  checkedAt DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([closeId, itemKey])
 }

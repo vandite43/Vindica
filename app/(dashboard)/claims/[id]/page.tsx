@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate, getRiskColor } from '@/lib/utils';
 import { STATUS_COLORS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { Brain, RefreshCw, AlertTriangle, CheckCircle, XCircle, FileText, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
+import { Brain, RefreshCw, AlertTriangle, CheckCircle, XCircle, FileText, ChevronDown, ChevronUp, Pencil, ClipboardCheck } from 'lucide-react';
 import type { ClaimAnalysis, RiskFactor } from '@/types';
 import { getStoredModel } from '@/lib/hooks/useAIModel';
 
@@ -390,6 +390,13 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
               <Button onClick={() => setDenialModal({ ...denialModal, open: true })} variant="outline" className="text-red-600 border-red-200">
                 <XCircle className="h-4 w-4 mr-2" /> Record Denial
               </Button>
+            )}
+            {['DRAFT', 'PENDING', 'SUBMITTED'].includes(claim.status) && (
+              <Link href={`/scrubber?claimId=${id}`}>
+                <Button variant="outline" className="text-[#5B3FD4] border-[#5B3FD4]/40 hover:bg-[#5B3FD4]/10">
+                  <ClipboardCheck className="h-4 w-4 mr-2" /> Pre-Submit Scrubber
+                </Button>
+              </Link>
             )}
             {claim.status === 'DENIED' && !claim.appeal && (
               <Button onClick={generateAppeal} disabled={updating} className="bg-[#0F4C81] hover:bg-[#1E6BB8]">

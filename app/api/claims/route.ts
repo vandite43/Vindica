@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { protect } from '@/lib/auth/protect';
+import { listClaims, createClaim } from '@/lib/db/claims';
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,22 +13,11 @@ export async function GET(req: NextRequest) {
     if (!practice) return NextResponse.json({ error: 'Practice not found' }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status');
-    const riskLevel = searchParams.get('riskLevel');
-    const payerId = searchParams.get('payerId');
+    const status = searchParams.get('status') ?? undefined;
+    const riskLevel = searchParams.get('riskLevel') ?? undefined;
+    const payerId = searchParams.get('payerId') ?? undefined;
 
-    const where: Record<string, unknown> = { practiceId: practice.id };
-    if (status && status !== 'ALL') where.status = status;
-    if (riskLevel && riskLevel !== 'ALL') where.riskLevel = riskLevel;
-    if (payerId) where.payerId = payerId;
-
-    const claims = await prisma.claim.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: { appeal: true },
-      take: 100,
-    });
-
+    const claims = await listClaims(practice.id, { status, riskLevel, payerId });
     return NextResponse.json(claims);
   } catch (error) {
     console.error(error);
@@ -36,6 +27,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER', 'BILLER']);
+    if (guard) return guard;
+
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -43,22 +37,18 @@ export async function POST(req: NextRequest) {
     if (!practice) return NextResponse.json({ error: 'Practice not found' }, { status: 404 });
 
     const body = await req.json();
-    const claim = await prisma.claim.create({
-      data: {
-        practiceId: practice.id,
-        patientName: body.patientName,
-        patientDob: new Date(body.patientDob),
-        patientInsuranceId: body.patientInsuranceId,
-        payerId: body.payerId,
-        payerName: body.payerName,
-        planType: body.planType,
-        claimDate: new Date(body.claimDate || new Date()),
-        serviceDate: new Date(body.serviceDate),
-        cdtCodes: body.cdtCodes,
-        diagnosisCodes: body.diagnosisCodes || [],
-        totalAmount: parseFloat(body.totalAmount),
-        status: 'DRAFT',
-      },
+    const claim = await createClaim(practice.id, {
+      patientName:        body.patientName,
+      patientDob:         new Date(body.patientDob),
+      patientInsuranceId: body.patientInsuranceId,
+      payerId:            body.payerId,
+      payerName:          body.payerName,
+      planType:           body.planType,
+      claimDate:          new Date(body.claimDate || new Date()),
+      serviceDate:        new Date(body.serviceDate),
+      cdtCodes:           body.cdtCodes,
+      diagnosisCodes:     body.diagnosisCodes || [],
+      totalAmount:        parseFloat(body.totalAmount),
     });
 
     return NextResponse.json(claim, { status: 201 });

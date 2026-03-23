@@ -270,10 +270,358 @@ Built a structured static knowledge base that gets selectively injected into eve
 
 ---
 
+### 2026-03-18 — Pre-Submission Dental Claim Scrubber
+
+Built a 20-item interactive pre-submission checklist inside the Vindica dashboard. Billers run through it before submitting a claim to catch the most common denial-causing errors. Accessible standalone via the sidebar or pre-populated from any claim's detail page.
+
+**Files created:**
+- **components/scrubber/ScrubberClient.tsx** — `'use client'` component; manages `Set<string>` checkbox state; 4 sections × 5/4/6/5 items; live progress bar (gradient `#5B3FD4 → #3BBFB0`); section headers turn mint green with ✓ icon when all items in that section are checked; "Claim Ready to Submit" banner at 100%; Reset button; pre-fill banner if opened from a claim; dark Vindica midnight background throughout.
+- **app/(dashboard)/scrubber/page.tsx** — server component; reads `searchParams.claimId`; if present, fetches claim from Prisma and verifies ownership; computes `initialChecked` from claim fields (`xraysAttached → radiographs`, `perioCharting → perio_chart`, `narrativeIncluded → narrative`, `preAuthObtained → preauth`, `providerNpi → type1_npi`); passes to `ScrubberClient`.
+
+**Files modified:**
+- **components/layout/Sidebar.tsx** — added `ClipboardCheck` nav item for `/scrubber` between Appeals and Payer Intelligence.
+- **app/(dashboard)/claims/[id]/page.tsx** — added "Pre-Submit Scrubber" button (violet border, `ClipboardCheck` icon) visible when claim status is DRAFT, PENDING, or SUBMITTED; links to `/scrubber?claimId={id}`.
+
+**Checklist sections and items:**
+1. Patient Demographics (5): legal name, DOB, subscriber/relationship, insurance ID/group, COB
+2. Provider & Credentialing (4): Type 1 NPI in Box 54, Type 2 NPI in Box 49, credentialing, payer ID
+3. Coding Accuracy (6): current CDT codes, tooth/surfaces, no duplicates/unbundling, frequency limits, pre-auth reference, primary EOB for COB claims
+4. Attachments (5): radiographs, perio chart, clinical narrative, lab receipt for D2750, intraoral photos
+
+Each item shows a short title and a "why it matters" subtitle explaining the denial risk.
+
+---
+
+### 2026-03-18 — Denial Decoder Tool
+
+Built a hardcoded, client-side CARC code reference tool. Billers type a code or keyword and get instant filtered results with actionable guidance. No database — all 14 codes are static data in the component.
+
+**Files created:**
+- **components/denial-decoder/DenialDecoderClient.tsx** — `'use client'` component; `useState` search query filtering all 14 denial codes by code, description, type, and action detail; result cards with monospace code, type badge (blue/purple/yellow/red/orange/gray), appealable badge (green/yellow/red), and action guidance box in violet; empty state with prompt; static "Critical Distinctions" section below results with 3 left-bordered info cards.
+- **app/(dashboard)/denial-decoder/page.tsx** — thin server component shell: Header + DenialDecoderClient.
+
+**Files modified:**
+- **components/layout/Sidebar.tsx** — added `BookOpen` nav item for `/denial-decoder` between Claim Scrubber and Payer Intelligence.
+
+**The 14 CARC codes covered:** CO-4, CO-11, CO-16, CO-18, CO-22, CO-29, CO-45, CO-50, CO-96, CO-97, CO-119, CO-151, CO-167, OA-23.
+
+**Critical Distinctions section (3 static cards):**
+1. Clearinghouse Rejection vs. Payer Denial (blue border)
+2. Timely Filing Deadlines by payer — table with Delta/Cigna/Aetna/MetLife/UHC/Medicaid/Medicare (yellow border)
+3. "Procedure Inclusive" Warning — CO-97 misunderstanding explanation (orange border)
+
+---
+
+### 2026-03-18 — Expert Knowledge Base Expansion + HIPAA Compliance Sprint
+
+**Expert knowledge base expanded:**
+- **lib/knowledge/cdt-codes.ts** — expanded from 16 to 32 CDT codes. Added `denialRisk` level and `criticalNotes[]` to every entry. New codes: D0140, D0150, D0220, D0230, D0272, D0330, D1206, D1351, D2150, D2330, D2392, D2394, D2950, D3120, D3310–D3330, D4355, D5110/D5120, D6750, D7220/D7230, D8080, D9215.
+- **lib/knowledge/payer-policies.ts** — added `timelyFiling`, `appealWindow`, `behaviorNotes` fields to all entries. Enriched all 6 original payers and added 3 new: UNITED001, BCBS001, MEDICAID001. Key additions: Cigna's call-before-appeal, Aetna peer-to-peer fax, MetLife writing-only appeals, Delta FMX reclassification trap, Medicaid balance-billing prohibition.
+- **lib/knowledge/billing-rules.ts** — new file: `BUNDLING_MASTER`, `TIMELY_FILING` deadlines by payer, `CARC_DENIAL_CODES` (13 codes with actions + overturn rates), `APPEAL_STRATEGY` (winning elements, counter-language, banned word list, ERISA citation, payer-specific channels), `COB_RULES`, `AR_PRIORITY_RULES`, `KPI_BENCHMARKS`.
+- **lib/knowledge/context-builder.ts** — `buildClaimContext` now injects bundling rules, CARC lookup, timely filing. `buildAppealContext` always injects `APPEAL_STRATEGY`. New helpers: `buildBundlingSection()`, `buildCarcSection()`.
+
+**HIPAA bcrypt audit (no changes needed):** All requirements already met — bcryptjs installed, `bcrypt.hash(password, 12)` on register, `bcrypt.compare()` on login, `password String?` nullable in schema, no plaintext password logging anywhere.
+
+**Merged AR Queue into Claims tabs:**
+- **components/claims/ClaimsTabs.tsx** — new `'use client'` tab shell: "All Claims" tab (ClaimsListView) and "AR Queue" tab (ARQueueClient). Active tab uses `border-b-2 border-[#5B3FD4]`.
+- **components/claims/ClaimsListView.tsx** — extracted original claims page client logic into standalone component.
+- **app/(dashboard)/claims/page.tsx** — rewritten as server component: fetches AR Queue claims from Prisma, maps to AR Queue format, renders ClaimsTabs.
+- **app/(dashboard)/ar-queue/page.tsx** — replaced with `redirect('/claims')`.
+- **components/layout/Sidebar.tsx** — removed AR Queue nav item.
+
+**HIPAA session timeout (15-minute inactivity):**
+- **lib/auth.ts** — added `maxAge: 900` to `session` config (server-side JWT cap at 15 min).
+- **components/Providers.tsx** — created `'use client'` SessionProvider wrapper (required so root layout stays a server component).
+- **components/SessionTimeoutWarning.tsx** — inactivity tracker: `WARN_MS = 13 min`, `LIMIT_MS = 15 min`. Listens for mousemove/mousedown/keydown/touchstart/scroll on document. Shows amber warning modal at 13 min; auto-logs out at 15 min via `signOut({ callbackUrl: '/login?reason=timeout' })`. "Stay Logged In" resets timers. Returns null when unauthenticated or no warning.
+- **app/layout.tsx** — wrapped body with `<Providers>` and mounted `<SessionTimeoutWarning />`.
+- **app/(auth)/login/page.tsx** — restructured: `LoginForm` (inner client component, reads `useSearchParams()`) wrapped in `<Suspense>` by `LoginPage` (default export). Shows amber banner "You were logged out due to inactivity." when `?reason=timeout` is present.
+
+---
+
+### 2026-03-19 — HIPAA Audit Log Viewer
+
+Added a full HIPAA audit log system: DB model, write helper, ADMIN-only API, and settings page viewer. No PHI is stored — only user emails, action types, and resource IDs (e.g. `claim:clm_abc123`).
+
+**Schema changes (`prisma/schema.prisma`):**
+- `UserRole` enum: `USER`, `ADMIN`
+- `AuditAction` enum: `LOGIN`, `VIEW`, `CREATE`, `UPDATE`, `DELETE`
+- `AuditOutcome` enum: `SUCCESS`, `FAILURE`
+- `User.role UserRole @default(USER)` — all existing users default to USER
+- `User.auditLogs AuditLog[]` relation
+- New `AuditLog` model: `id`, `timestamp`, `userId?`, `userEmail`, `action`, `resource`, `outcome`, `ipAddress?`, `details?`. Indexed on `timestamp(desc)`, `userEmail`, `action`.
+- Migration: `20260319041122_add_audit_logs`
+
+**Files created:**
+- **`lib/audit.ts`** — `writeAuditLog(params)` helper. Never throws — write failures log to console and are swallowed so they never crash the main request.
+- **`types/next-auth.d.ts`** — Module augmentation adding `role: string` to `session.user`.
+- **`app/api/audit-logs/route.ts`** — ADMIN-only GET endpoint. Re-verifies role from DB (not just JWT) for security. Accepts `userEmail` (text search), `action` (enum filter), `startDate`/`endDate` (inclusive range). Returns max 100 records ordered by timestamp desc. Returns 403 if not ADMIN. Selects only id/timestamp/userEmail/action/resource/outcome — no details/ipAddress in list view.
+- **`components/settings/AIModelCard.tsx`** — extracted from old settings page (unchanged logic).
+- **`components/settings/AuditLogViewer.tsx`** — `'use client'` component. Filters: debounced email search (400ms), action dropdown, start/end date pickers. Table columns: Date & Time | User | Action (colored badge) | Resource | Outcome (colored badge). Loading skeleton, "No logs found" empty state, error state. Formats timestamps as "Jan 15, 2024, 10:32 AM".
+
+**Files modified:**
+- **`lib/auth.ts`** — JWT callback now fetches `role` from DB on first sign-in, stores in token. Session callback exposes `session.user.role`. `authorize` callback writes LOGIN audit log on both SUCCESS and FAILURE.
+- **`app/(dashboard)/settings/page.tsx`** — converted from `'use client'` to async server component. Fetches role from DB, renders `<AuditLogViewer />` only when `isAdmin === true`. Renders `<AIModelCard />` (extracted client component) for everyone.
+
+**Action badge colors:** LOGIN=blue, VIEW=gray, CREATE=green, UPDATE=yellow, DELETE=red.
+**Outcome badge colors:** SUCCESS=green, FAILURE=red.
+
+**To promote a user to ADMIN:** Run directly in DB:
+```sql
+UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
+
+---
+
+### 2026-03-19 — Multi-Factor Authentication (Email Verification Codes)
+
+Added full HIPAA-grade MFA to the login flow. Users with `mfaEnabled=true` (default for all users) must enter a 6-digit email code after their password before a NextAuth session is created.
+
+**Architecture**: NextAuth credentials provider does not natively support multi-step auth. The solution uses a custom `credentials-check` API route that validates the password without creating a session, then redirects to a verify page. The verify page calls `/api/auth/verify-mfa` which — on success — issues a single-use `mfaToken` (UUID, 5-min TTL) stored in the DB. The verify page then calls `signIn('credentials', { email, mfaToken })` which hits a new path in the NextAuth `authorize` function that validates and consumes the token to create the session.
+
+**Schema changes (`prisma/schema.prisma`):**
+- Added to `User`: `mfaEnabled Boolean @default(true)`, `mfaCode String?`, `mfaCodeExpiry DateTime?`, `mfaAttempts Int @default(0)`, `mfaLockedUntil DateTime?`, `mfaToken String?`, `mfaTokenExpiry DateTime?`
+- Migration: `20260319044028_add_mfa_fields`
+
+**Dependencies:** `nodemailer@7` (v7 required by next-auth beta), `@types/nodemailer`
+
+**Files created:**
+- **`lib/email.ts`** — Nodemailer SMTP transport singleton. `sendEmail({ to, subject, text })`. Reads `SMTP_HOST/PORT/USER/PASSWORD/FROM` from env.
+- **`lib/auth/mfa.ts`** — `generateMfaCode(userId)`: generates 6-digit code (100000–999999), saves with 10-min expiry, resets `mfaAttempts`, returns plaintext code for emailing.
+- **`app/api/auth/credentials-check/route.ts`** — POST `{ email, password }`. Validates bcrypt. Returns `{ userId, email, mfaEnabled }`. Does NOT create a session. Writes audit log on failure.
+- **`app/api/auth/send-mfa/route.ts`** — POST `{ userId }`. Calls `generateMfaCode`, fetches user email, calls `sendEmail`. Subject: "Your Vindica verification code". Used for initial send and resend.
+- **`app/api/auth/verify-mfa/route.ts`** — POST `{ userId, code }`. Checks lock (`mfaLockedUntil`). Validates code + expiry. Increments `mfaAttempts` on failure; locks for 30 min after 5 failures. On success: clears MFA fields, sets `mfaToken` (UUID) + `mfaTokenExpiry` (5 min), returns `{ ok, mfaToken, email }`.
+- **`app/auth/verify/page.tsx`** — 6 individual digit inputs with auto-advance (onInput), backspace navigation (onKeyDown), paste handling (onPaste). Calls verify-mfa, then `signIn('credentials', { email, mfaToken })`. Error banner on failure. 60-second resend countdown. Styled to match login page (midnight bg, white card, `#5B3FD4` primary).
+
+**Files modified:**
+- **`lib/auth.ts`** — Added `mfaToken` to credentials definition. Split `authorize` into two paths: (1) mfaToken path — validates single-use token, consumes it, creates session; (2) password path — existing bcrypt flow, but returns `null` for `mfaEnabled=true` users to block direct session creation.
+- **`app/(auth)/login/page.tsx`** — Replaced direct `signIn()` call with: fetch `/api/auth/credentials-check` → if mfaEnabled, fetch `/api/auth/send-mfa` and redirect to `/auth/verify?userId=...&email=...`; if not mfaEnabled, call `signIn()` directly.
+- **`proxy.ts`** — Added `/auth/verify` to `isAuthPage` check so unauthenticated users can reach the verify page and authenticated users are redirected to dashboard.
+- **`.env.local`** — Added `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` with placeholder values.
+
+**To activate:** Fill in real SMTP credentials in `.env.local`. All users have `mfaEnabled=true` by default. Set `mfaEnabled=false` in DB to disable MFA for a specific user.
+
+---
+
+### 2026-03-19 — RBAC (4-Role System) + Multi-Tenancy + PHI Encryption
+
+**RBAC:**
+- `prisma/schema.prisma` — replaced `UserRole { USER, ADMIN }` with `Role { ADMIN, OFFICE_MANAGER, BILLER, PROVIDER }`. Added `isActive Boolean @default(true)` to User. Added `UPDATE_USER_ROLE` to `AuditAction`.
+- Migration `20260319100000_add_rbac` — custom SQL: add new enum, migrate values (USER→BILLER), drop old enum.
+- `lib/auth/roles.ts` — permission helpers: `canManageUsers`, `canViewAuditLogs`, `canViewReports`, `canCreateClaims`, `canDeleteClaims`.
+- `lib/auth/protect.ts` — `protect(req, allowedRoles[])` middleware: re-verifies role AND `isActive` from DB on every call.
+- `lib/auth.ts` — added `isActive` check in both MFA token path and password path. Falls back to `BILLER` instead of `USER`.
+- `app/api/auth/register/route.ts` — self-registered practice owners get `role: 'ADMIN'` automatically.
+- `app/api/claims/route.ts` — POST guarded by `protect(req, ['ADMIN', 'OFFICE_MANAGER', 'BILLER'])`.
+- `app/api/claims/[id]/route.ts` — DELETE guarded by `protect(req, ['ADMIN'])`.
+- `app/api/audit-logs/route.ts` — replaced manual role check with `protect(req, ['ADMIN'])`.
+- `components/layout/Sidebar.tsx` — role-aware nav: PROVIDER sees only Dashboard, Claims, Settings.
+- `components/settings/UserManagement.tsx` — table of practice users with Edit Role modal and Deactivate/Activate toggle; "Create Account" button with modal (name, email, temp password, role).
+- `app/(dashboard)/settings/page.tsx` — converted to shadcn Tabs: General | Practice Management | Audit Logs.
+
+**Multi-tenancy:**
+- `prisma/schema.prisma` — added `practiceId String?` and `memberOf Practice? @relation("PracticeMembers")` to User; added `members User[] @relation("PracticeMembers")` to Practice.
+- Migration `20260319110000_add_practice_member` — adds FK column, backfills owners via UPDATE.
+- `app/api/users/route.ts` — GET scoped to practice; POST creates employees linked to admin's practice.
+- `app/api/users/[id]/route.ts` — PATCH validates target is in same practice before edits.
+
+**Practice KPIs:**
+- `app/api/practice/stats/route.ts` — parallel DB aggregation: total claims, billed, approved revenue, denied, pending, recovered, appeal win rate, active users.
+- `components/settings/PracticeStats.tsx` — 8 KPI cards with skeleton loaders.
+
+**Email (Resend):**
+- `lib/email.ts` — switched from Mailtrap to Resend SDK. Sender: `noreply@hsnhgroup.com`.
+- `.env.local` — added `RESEND_API_KEY`.
+
+**Field-level AES-256-GCM PHI Encryption (COMPLETE):**
+- **What is encrypted:** `patientName`, `patientDob`, `patientInsuranceId`, `diagnosisCodes` (Claim); `letterContent` (Appeal). `toothNumbers` intentionally NOT encrypted (non-identifying clinical metadata).
+- `lib/security/encrypt.ts` — AES-256-GCM utility. Key from `ENCRYPTION_KEY` env (must be exactly 32 chars). Format: `enc:<iv_hex>:<authTag_hex>:<ciphertext_hex>`. `safeDecrypt()` returns value unchanged if no `enc:` prefix (migration safety for legacy plaintext data).
+- `prisma/schema.prisma` — `patientDob DateTime → String`; `diagnosisCodes String[] → String`.
+- Migration `20260319120000_encrypt_phi_columns` — `ALTER TABLE "Claim" ALTER COLUMN "patientDob" TYPE TEXT USING "patientDob"::TEXT`; same for `diagnosisCodes` using `array_to_json()`.
+- `lib/db/claims.ts` — DAL: `DecryptedClaim` type (patientDob restored to Date, diagnosisCodes to string[]). Exports: `createClaim`, `getClaimById`, `listClaims`, `updateClaim`, `deleteClaim`. Also exports `decryptPHI` for use by appeals DAL.
+- `lib/db/appeals.ts` — DAL: `saveAppealLetter(id, content)` encrypts letterContent; `getAppeal(id)` decrypts; `listAppeals(practiceId)` decrypts patientName in joined claim data.
+- `app/api/claims/route.ts` — GET uses `listClaims()`, POST uses `createClaim()`.
+- `app/api/claims/[id]/route.ts` — GET uses `getClaimById()`, PATCH uses `updateClaim()`, DELETE uses `deleteClaim()`.
+- `app/api/claims/[id]/analyze/route.ts` — uses `getClaimById()` (returns `DecryptedClaim` with `patientDob: Date`). `updateClaim()` for AI result fields.
+- `app/api/appeals/route.ts` — GET uses `listAppeals()` (decrypts patientName), POST uses `getClaimById()` for ownership check.
+- `app/api/appeals/[id]/route.ts` — GET uses `getAppeal()`, PATCH encrypts letterContent via `saveAppealLetter` if present.
+- `app/api/appeals/[id]/generate/route.ts` — uses `getAppeal()` (returns `DecryptedClaim` with `patientDob: Date` for `ClaimForAppeal` interface); `saveAppealLetter()` to encrypt generated letter.
+- `prisma/seed.ts` — imports `encrypt` from `lib/security/encrypt`; PHI fields and `letterContent` are encrypted at seed time.
+- `.env.local` — `ENCRYPTION_KEY=4cedee92a78c856d19d12b14c922d446` (32-char hex). **BACK THIS UP — if lost, all encrypted PHI is permanently unreadable.**
+
+---
+
+### 2026-03-19 — Remove PHI from AI Prompts
+
+**Problem:** Both AI functions were sending `patientName`, `patientDob`, and `patientInsuranceId` to Anthropic in plaintext on every call — a HIPAA risk without a signed BAA.
+
+**Fix:**
+- `lib/ai/claim-analyzer.ts` — removed patient name, DOB, and insurance ID from the prompt. The AI only needs CDT codes, diagnosis codes, payer info, and documentation flags to score denial risk. Identity fields are irrelevant.
+- `lib/ai/appeal-generator.ts` — replaced the three PHI lines in the prompt with placeholder tokens (`[PATIENT_NAME]`, `[PATIENT_DOB]`, `[PATIENT_INSURANCE_ID]`). After Claude returns the letter, a `.replace()` chain substitutes the real values locally before returning. No PHI ever leaves the server in the API call; the final letter stored in the DB contains real patient info (encrypted at rest).
+
+---
+
+### 2026-03-19 — Denial Trend Dashboard
+
+Built a full analytics dashboard at `/denial-trends` showing 8 sections of denial pattern data.
+
+**Files created:**
+- `app/api/analytics/denials/route.ts` — ADMIN + OFFICE_MANAGER only. Accepts `startDate`/`endDate` params. Queries `status`, `totalAmount`, `payerName`, `cdtCodes`, `denialCode`, `denialReason`, `serviceDate`, `providerNpi` (no PHI fields). Computes all aggregations in JS: top metrics, denial trend by month, payer breakdown, CDT code breakdown (top 10), CARC reason breakdown with category mapping, provider breakdown, and auto-generated alerts. Returns `isSampleData: true` with a hardcoded realistic dataset if the practice has no claims.
+- `app/(dashboard)/denial-trends/page.tsx` — server page shell with `force-dynamic`.
+- `components/denial-trends/DenialTrendsDashboard.tsx` — `'use client'` component. Date range state (`1m`/`3m`/`6m`/`12m`/`custom`). All 8 sections: metric cards, date filter bar, line chart (with 5% target reference line), horizontal bar chart for payers, CDT table, donut chart for denial reasons, alerts panel, provider table. Uses `formatCurrency` from `lib/utils`. All charts use Recharts (already installed v3.8.0).
+
+**Files modified:**
+- `components/layout/Sidebar.tsx` — added "Denial Trends" nav item (TrendingDown icon) visible to ADMIN and OFFICE_MANAGER only.
+- `components/denial-decoder/DenialDecoderClient.tsx` — added `useSearchParams()` to initialize query state from `?search=` URL param. Clicking "View in Denial Decoder" from CDT table now pre-populates the search.
+- `app/(dashboard)/denial-decoder/page.tsx` — wrapped `DenialDecoderClient` in `<Suspense>` (required since it now calls `useSearchParams()`).
+
+**Key design decisions:**
+- Analytics queries Prisma directly (no DAL) — only non-PHI fields selected.
+- Sample data is generated in JS in the API handler (no DB writes) when `claimCount === 0`.
+- CARC codes categorized into 9 groups with overturn rates and priority (High/Low/Fatal).
+- Alert rules: payer > 15% denial rate (red), CO-29 timely filing (red), CDT > 20% with ≥5 occurrences (yellow), rising trend (yellow), < 50% appeals filed rate (yellow).
+
+---
+
+### 2026-03-19 — Appeal ROI Calculator
+
+Built a standalone tool at `/roi-calculator` that helps billing specialists decide whether a denied claim is worth appealing.
+
+**Files created:**
+- `app/(dashboard)/roi-calculator/page.tsx` — thin server page shell (Header + client component)
+- `components/roi-calculator/ROICalculatorClient.tsx` — full `'use client'` component with all 7 sections
+
+**Files modified:**
+- `components/layout/Sidebar.tsx` — added `Calculator` icon + "ROI Calculator" nav item (visible to all NON_PROVIDER roles), positioned between Denial Decoder and Denial Trends
+
+**Features:**
+- Section 1 — Input panel: claim amount, payer (10 options), CARC code (12 options), CDT code, days since denial, staff rate (default $22), appeal time
+- Section 2 — Live metric cards (update on every keystroke, no button needed): Overturn Probability, Expected Recovery, Appeal Cost, Net ROI, ROI Percentage — all color-coded green/yellow/red
+- Section 3 — Recommendation banner (gated by "Calculate ROI" button): 5 variants — STRONG APPEAL (green), CONSIDER (yellow), WRITE OFF (gray), FATAL CO-29 (red), NOT COVERED CO-119 (gray)
+- Section 4 — Appeal deadline warning: 4 urgency states (green/yellow/red pulsing/expired) based on payer window minus days since denial
+- Section 5 — Payer-specific instructions card in `#E8E4FF` for all 10 payers
+- Section 6 — Bulk analysis table: add rows, inline editing, auto-calculated ROI Score and Recommendation per row, Sort by ROI button, Export CSV, summary totals row
+- Section 7 — Industry benchmarks panel on midnight background (`#1A1033`)
+
+**Calculation logic:**
+- Overturn rate = base CARC rate × payer multiplier (capped at 95%)
+- Expected recovery = claim amount × overturn rate
+- Appeal cost = staff rate × appeal hours
+- Net ROI = expected recovery − appeal cost
+- ROI % = net ROI ÷ appeal cost × 100
+
+---
+
+### 2026-03-19 — Credentialing & NPI Tracker
+
+Built a full provider credentialing management system with new DB models, 5 API routes, a large client component, and seeded sample data.
+
+**Schema changes (`prisma/schema.prisma`):**
+- New enum: `CredentialStatus` (NOT_STARTED, APPLICATION_SENT, IN_PROCESS, CREDENTIALED, EXPIRED, TERMINATED, DENIED)
+- New model: `Provider` — linked to Practice, with firstName/lastName/credentials/npiType1/licenseNumber/licenseState/licenseExpiry/deaNumber/specialty/startDate/active
+- New model: `ProviderCredential` — per-payer credentialing row with status/applicationDate/approvalDate/expiryDate/contractType/providerNumber/notes
+- New model: `CredentialingEvent` — audit trail for credentialing status changes and manual log entries
+- Modified `Practice`: added `npiType2`, `taxId`, `billingAddress` fields, added `providers Provider[]` relation
+- Migration: `20260320042317_add_credentialing_models`
+
+**API routes created:**
+- `app/api/providers/route.ts` — GET list (with credentialing + events), POST create (auto-creates 10 DEFAULT_PAYERS as NOT_STARTED)
+- `app/api/providers/[id]/route.ts` — GET single, PUT update, DELETE soft-deactivate
+- `app/api/providers/[id]/credentials/route.ts` — GET list, POST create, PUT update (auto-logs CredentialingEvent on status change)
+- `app/api/providers/[id]/events/route.ts` — GET list, POST create manual event
+- `app/api/practice/route.ts` — GET + PUT for npiType2/taxId/billingAddress/name/npi fields
+
+**UI files created:**
+- `app/(dashboard)/credentialing/page.tsx` — thin server page shell
+- `components/credentialing/CredentialingClient.tsx` — full `'use client'` component with all 6 sections
+
+**Components layout (6 sections):**
+1. Provider List panel (col-span-2) — provider cards with name/NPI/specialty/active badge/progress bar/color status dot, Add Provider button opens shadcn Dialog modal
+2. Provider Detail panel (col-span-3) — 3 tabs: Profile (edit form), Credentials (table with inline edit), Timeline (event log + Log Event form)
+3. Alerts Panel — client-side computed from providers state: license expiry (<90d), credential expiry, expired credentials, NOT_STARTED payers, new provider gap (joined <6 months with NOT_STARTED payers)
+4. NPI Validator — validates Box 54/49 NPIs, checks Type 1 NPI against provider list
+5. Credentialing Checklist — collapsible, 4 steps with checkboxes, red warning banner
+6. Practice NPI Panel — shows/edits practice npiType2/taxId/billingAddress
+
+**Files modified:**
+- `components/layout/Sidebar.tsx` — added ShieldCheck icon + "Credentialing" nav item (ADMIN/OFFICE_MANAGER only) between ROI Calculator and Denial Trends
+
+**Seed data:**
+- 3 sample providers seeded directly via Node with `.env.local` loaded
+- Dr. Sarah Johnson DDS — fully credentialed, Cigna expiring in 45 days (yellow status)
+- Dr. Marcus Rivera DMD — new provider (3 months), mix of IN_PROCESS and NOT_STARTED (red status — new provider gap)
+- Dr. Lisa Chen RDH — mostly credentialed, Aetna EXPIRED 30 days ago (red status)
+
+---
+
+### 2026-03-20 — Month End Close Checklist
+
+Built a full month-end billing close workflow at `/month-end`. ADMIN and OFFICE_MANAGER only.
+
+**Schema changes (`prisma/schema.prisma`):**
+- Added `MONTH_END_CHECKLIST_ITEM` to `AuditAction` enum
+- New model `MonthEndClose`: per-practice per-month record with `month`, `year`, `notes`, `closedAt`, unique on `[practiceId, month, year]`
+- New model `MonthEndItem`: per-checkbox state with `closeId`, `phase`, `itemKey`, `checked`, `checkedBy`, `checkedAt`, unique on `[closeId, itemKey]`
+- Added `monthEndCloses MonthEndClose[]` relation to `Practice`
+- Migration: `20260320044409_add_month_end_close`
+- Updated `lib/audit.ts` — added `MONTH_END_CHECKLIST_ITEM` to `AuditAction` union type
+
+**API routes created:**
+- `app/api/month-end/route.ts` — GET finds-or-creates (upsert) close record for given month/year; also accepts `?archive=true` to return all records for archive view
+- `app/api/month-end/[id]/items/route.ts` — PUT upserts a single item's checked state; auto-creates audit log with `MONTH_END_CHECKLIST_ITEM` action
+- `app/api/month-end/[id]/notes/route.ts` — PUT updates close notes
+- `app/api/month-end/[id]/close/route.ts` — POST sets `closedAt`; enforces all 31 items checked server-side
+- `app/api/practice/stats/route.ts` — modified to accept optional `?month=M&year=Y` query params that filter claims by `serviceDate` within that month; also added `appealingCount` and `oldUnpaidCount` (claims > 30d unpaid) to response
+
+**UI files created:**
+- `app/(dashboard)/month-end/page.tsx` — thin server page shell
+- `components/month-end/MonthEndClient.tsx` — full `'use client'` component
+
+**Features:**
+- 5 sequential phases (31 total items): AR Cleanup (7), Unbilled Procedures (5), ERA Reconciliation (6), Financial Reconciliation (6), Reporting (7)
+- Phases 2–5 locked until previous phase is 100% complete (visual lock overlay)
+- Optimistic UI: checkbox updates instantly, reverts if API fails
+- Each completed item shows `checkedBy` email + timestamp
+- Month/year selectors reload data for any historical period
+- Overall progress bar + days-remaining badge (green/amber/red)
+- "Close Month" button disabled until all 31 checked; enforced server-side too
+- Once closed, `closedAt` timestamp shown + all checkboxes disabled
+- KPI side panel pulls from `/api/practice/stats?month=M&year=Y`: collection rate, denial rate, denied amount, recovered, appeal win rate, pending appeals — color-coded vs benchmarks
+- Notes textarea auto-saves 800ms after last keystroke with "Saved" confirmation
+- Deadline reminders: old unpaid claims > 30d, pending appeals, end-of-month warning ≤5 days
+- Archive panel (collapsible): all past closes with progress bar; click any row to expand full read-only checklist view
+
+**Files modified:**
+- `components/layout/Sidebar.tsx` — added `CalendarCheck` icon + "Month End Close" nav item (ADMIN/OFFICE_MANAGER only) after Credentialing
+
+**Seed data:**
+- February 2026 close seeded with 21/31 items checked (phases 1–3 complete + 3/6 of phase 4)
+- Notes: "ERA from Cigna still pending reconciliation. All other payers balanced."
+- All checked items attributed to `demo@claimguard.ai`
+
+---
+
+### 2026-03-22 — HIPAA Compliance Audit + Appeal Generator Hardening
+
+**Audit finding:** PHI (patient name, DOB, insurance ID) was NOT being sent to Anthropic. The existing code already used the correct placeholder approach — `[PATIENT_NAME]`, `[PATIENT_DOB]`, `[PATIENT_INSURANCE_ID]` appear literally in the prompt; real values are substituted locally after the API call.
+
+**Hardening changes made:**
+
+- **`lib/ai/prompts.ts`** — Tightened `APPEAL_GENERATOR_SYSTEM_PROMPT`: replaced generic "Use [PLACEHOLDER]" instruction with explicit rules listing the pre-defined PHI tokens and instructing Claude to never replace/infer actual patient information.
+
+- **`lib/ai/appeal-generator.ts`** — Three changes:
+  1. Added HIPAA compliance comment block documenting the placeholder approach for future developers
+  2. Added PHI assertion before `client.messages.create()`: checks `prompt.includes(patientName)` and `prompt.includes(insuranceId)` — throws `'HIPAA violation prevented: PHI detected in AI prompt'` if either is found, blocking the API call before PHI can be transmitted
+  3. Bumped `max_tokens: 1500 → 3000` to prevent letter truncation (same class of bug as the claim analyzer D2740+D4341 issue)
+
+- **`app/api/appeals/[id]/generate/route.ts`** — Added `writeAuditLog()` call after successful letter generation: `action: 'CREATE'`, `resource: 'appeal:<id>'`, `details: 'Appeal letter generated (PHI not transmitted to AI)'`
+
+---
+
 ## Known State / To-Do
 
-- Database needs to be set up before the app will work: `docker run` for PostgreSQL → `npx prisma migrate dev` → `npx prisma db seed`
+- Database needs to be set up before the app will work: `docker run` for PostgreSQL → `npx prisma migrate deploy` → `npx prisma db seed`
 - `.env.local` needs a real `ANTHROPIC_API_KEY` for AI features to work
+- `ENCRYPTION_KEY` must be set in `.env.local` before seeding or creating any claims
 - No toast notifications wired up yet (sonner installed but not fully integrated)
 - No mobile navigation component built yet (MobileNav.tsx stub not created)
 - Prisma 7 `prisma.config.ts` pattern used instead of classic `.env` datasource URL

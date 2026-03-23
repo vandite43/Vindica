@@ -10,7 +10,16 @@
       "Bash(npm run:*)",
       "Bash(npx prisma:*)",
       "Bash(node -e \"const p = require\\(''@prisma/client/package.json''\\); console.log\\(p.version\\)\")",
-      "Bash(node -e \"const p = require\\(''./node_modules/prisma/package.json''\\); console.log\\(p.version\\)\")"
+      "Bash(node -e \"const p = require\\(''./node_modules/prisma/package.json''\\); console.log\\(p.version\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(npx ts-node -e \":*)",
+      "Bash(2)",
+      "Bash(psql \"postgresql://postgres:password@localhost:5432/claimguard\" -c \"SELECT email, role, \"\"isActive\"\" FROM \"\"User\"\" ORDER BY \"\"createdAt\"\";\")",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep -Seconds 1; Remove-Item -Recurse -Force ''c:\\\\Users\\\\malad\\\\dev\\\\dental-denial\\\\.next'' -ErrorAction SilentlyContinue; Write-Host ''Done''\")",
+      "Bash(xargs wc:*)",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force; Remove-Item -Recurse -Force ''c:\\\\Users\\\\malad\\\\dev\\\\dental-denial\\\\.next'' -ErrorAction SilentlyContinue; Write-Host ''Done''\")",
+      "Bash(grep -r \"sendEmail\\\\|send.*PHI\\\\|log.*patient\\\\|console.*patient\" /c/Users/malad/dev/dental-denial --include=*.ts --include=*.tsx)",
+      "Bash(node -e \"console.log\\(require\\(''crypto''\\).randomBytes\\(16\\).toString\\(''hex''\\)\\)\")"
     ]
   },
   "hooks": {

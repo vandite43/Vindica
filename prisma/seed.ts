@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
+import { encrypt } from '../lib/security/encrypt';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL ?? 'postgresql://postgres:password@localhost:5432/claimguard' });
 const prisma = new PrismaClient({ adapter });
@@ -418,10 +419,15 @@ async function main() {
   ];
 
   for (const claimData of claimsData) {
+    const { patientName, patientDob, patientInsuranceId, diagnosisCodes, ...rest } = claimData;
     await prisma.claim.create({
       data: {
-        ...claimData,
-        practiceId: practice.id,
+        ...rest,
+        practiceId:         practice.id,
+        patientName:        encrypt(patientName),
+        patientDob:         encrypt((patientDob as Date).toISOString()),
+        patientInsuranceId: encrypt(patientInsuranceId),
+        diagnosisCodes:     encrypt(JSON.stringify(diagnosisCodes)),
       },
     });
   }
@@ -586,7 +592,7 @@ Sunshine Family Dentistry`,
       update: {},
       create: {
         claimId: claim.id,
-        letterContent: template.letterContent,
+        letterContent: encrypt(template.letterContent),
         status: appealStatus,
         submittedAt: appealStatus !== 'DRAFT' ? new Date('2026-02-28') : null,
         amountRecovered: claim.status === 'APPEAL_WON' ? claim.totalAmount : null,
@@ -597,6 +603,172 @@ Sunshine Family Dentistry`,
   }
 
   console.log('Created appeals for denied claims');
+
+  // ── Seed Providers ──────────────────────────────────────────────────────────
+  const providerPractice = user.practice!;
+  const existingProviders = await prisma.provider.count({ where: { practiceId: providerPractice.id } });
+
+  if (existingProviders === 0) {
+    const now = new Date();
+    const in45 = new Date(now); in45.setDate(now.getDate() + 45);
+    const in90 = new Date(now); in90.setDate(now.getDate() + 90);
+    const threeMonthsAgo = new Date(now); threeMonthsAgo.setMonth(now.getMonth() - 3);
+    const twoYearsAgo = new Date(now); twoYearsAgo.setFullYear(now.getFullYear() - 2);
+    const fiveYearsAgo = new Date(now); fiveYearsAgo.setFullYear(now.getFullYear() - 5);
+    const pastExpiry = new Date(now); pastExpiry.setDate(now.getDate() - 30);
+    const oneYearHence = new Date(now); oneYearHence.setFullYear(now.getFullYear() + 1);
+    const twoYearsHence = new Date(now); twoYearsHence.setFullYear(now.getFullYear() + 2);
+
+    // Provider 1: Dr. Sarah Johnson — mostly credentialed, one credential expiring in 45 days
+    const p1 = await prisma.provider.create({
+      data: {
+        practiceId: providerPractice.id,
+        firstName: 'Sarah', lastName: 'Johnson', credentials: 'DDS',
+        npiType1: '1234567891', licenseNumber: 'D-48291', licenseState: 'TX',
+        licenseExpiry: twoYearsHence, deaNumber: 'BJ1234567',
+        specialty: 'General Dentistry', startDate: fiveYearsAgo,
+        credentialing: {
+          create: [
+            { payerName: 'Delta Dental',       payerId: 'DELTA001',   status: 'CREDENTIALED',     approvalDate: new Date('2022-01-15'), expiryDate: oneYearHence,  contractType: 'PPO', providerNumber: 'DD-88421' },
+            { payerName: 'Cigna',              payerId: 'CIGNA001',   status: 'CREDENTIALED',     approvalDate: new Date('2022-02-01'), expiryDate: in45,          contractType: 'PPO', providerNumber: 'CG-55201' },
+            { payerName: 'Aetna',              payerId: 'AETNA001',   status: 'CREDENTIALED',     approvalDate: new Date('2022-01-20'), expiryDate: oneYearHence,  contractType: 'PPO', providerNumber: 'AE-29301' },
+            { payerName: 'MetLife',            payerId: 'METLIFE001', status: 'CREDENTIALED',     approvalDate: new Date('2022-03-10'), expiryDate: twoYearsHence, contractType: 'PPO', providerNumber: 'ML-71040' },
+            { payerName: 'UnitedHealthcare',   payerId: 'UHC001',     status: 'CREDENTIALED',     approvalDate: new Date('2022-02-15'), expiryDate: oneYearHence,  contractType: 'PPO', providerNumber: 'UHC-33891' },
+            { payerName: 'Guardian',           payerId: 'GUARD001',   status: 'CREDENTIALED',     approvalDate: new Date('2022-04-01'), expiryDate: twoYearsHence, contractType: 'PPO', providerNumber: 'GD-12045' },
+            { payerName: 'Humana',             payerId: 'HUMANA001',  status: 'CREDENTIALED',     approvalDate: new Date('2022-03-01'), expiryDate: twoYearsHence, contractType: 'PPO', providerNumber: 'HU-88302' },
+            { payerName: 'BCBS',               payerId: 'BCBS001',    status: 'CREDENTIALED',     approvalDate: new Date('2022-02-20'), expiryDate: oneYearHence,  contractType: 'PPO', providerNumber: 'BC-44510' },
+            { payerName: 'Medicaid (State)',    payerId: 'MCAID001',   status: 'CREDENTIALED',     approvalDate: new Date('2022-05-01'), expiryDate: oneYearHence,  contractType: 'Medicaid', providerNumber: 'TX-990221' },
+            { payerName: 'Medicare Advantage', payerId: 'MCARE001',   status: 'NOT_STARTED',      notes: 'Practice opted out of Medicare Advantage' },
+          ],
+        },
+        events: {
+          create: [
+            { payerName: 'Cigna', event: 'Renewal notice received — expiring in 45 days', updatedBy: 'demo@claimguard.ai', createdAt: new Date(now.getTime() - 86400000 * 5) },
+            { payerName: 'Delta Dental', event: 'Annual re-attestation completed on CAQH', updatedBy: 'demo@claimguard.ai', createdAt: new Date(now.getTime() - 86400000 * 30) },
+          ],
+        },
+      },
+    });
+
+    // Provider 2: Dr. Marcus Rivera — new provider (3 months ago), mix of IN_PROCESS and NOT_STARTED
+    const p2 = await prisma.provider.create({
+      data: {
+        practiceId: providerPractice.id,
+        firstName: 'Marcus', lastName: 'Rivera', credentials: 'DMD',
+        npiType1: '9876543210', licenseNumber: 'D-51872', licenseState: 'TX',
+        licenseExpiry: twoYearsHence, specialty: 'Oral Surgery', startDate: threeMonthsAgo,
+        credentialing: {
+          create: [
+            { payerName: 'Delta Dental',       payerId: 'DELTA001',   status: 'IN_PROCESS',       applicationDate: new Date(threeMonthsAgo.getTime() + 86400000 * 5), notes: 'Submitted via CAQH. Follow up due next week.' },
+            { payerName: 'Cigna',              payerId: 'CIGNA001',   status: 'IN_PROCESS',       applicationDate: new Date(threeMonthsAgo.getTime() + 86400000 * 7) },
+            { payerName: 'Aetna',              payerId: 'AETNA001',   status: 'APPLICATION_SENT', applicationDate: new Date(threeMonthsAgo.getTime() + 86400000 * 10) },
+            { payerName: 'MetLife',            payerId: 'METLIFE001', status: 'APPLICATION_SENT', applicationDate: new Date(threeMonthsAgo.getTime() + 86400000 * 10) },
+            { payerName: 'UnitedHealthcare',   payerId: 'UHC001',     status: 'NOT_STARTED' },
+            { payerName: 'Guardian',           payerId: 'GUARD001',   status: 'NOT_STARTED' },
+            { payerName: 'Humana',             payerId: 'HUMANA001',  status: 'NOT_STARTED' },
+            { payerName: 'BCBS',               payerId: 'BCBS001',    status: 'NOT_STARTED' },
+            { payerName: 'Medicaid (State)',    payerId: 'MCAID001',   status: 'NOT_STARTED' },
+            { payerName: 'Medicare Advantage', payerId: 'MCARE001',   status: 'NOT_STARTED' },
+          ],
+        },
+        events: {
+          create: [
+            { event: 'Provider hired. Credentialing process started for all major payers.', updatedBy: 'demo@claimguard.ai', createdAt: threeMonthsAgo },
+            { payerName: 'Delta Dental', event: 'Application submitted via CAQH ProView. Confirmation received.', updatedBy: 'demo@claimguard.ai', createdAt: new Date(threeMonthsAgo.getTime() + 86400000 * 5) },
+            { payerName: 'Cigna', event: 'Follow-up call placed. Rep confirmed receipt. Est. 60-90 day processing.', updatedBy: 'demo@claimguard.ai', createdAt: new Date(threeMonthsAgo.getTime() + 86400000 * 21) },
+          ],
+        },
+      },
+    });
+
+    // Provider 3: Dr. Lisa Chen — RDH, mostly credentialed, one EXPIRED credential
+    const p3 = await prisma.provider.create({
+      data: {
+        practiceId: providerPractice.id,
+        firstName: 'Lisa', lastName: 'Chen', credentials: 'RDH',
+        npiType1: '5551234567', licenseNumber: 'RDH-22841', licenseState: 'TX',
+        licenseExpiry: oneYearHence, specialty: 'Dental Hygiene', startDate: twoYearsAgo,
+        credentialing: {
+          create: [
+            { payerName: 'Delta Dental',       payerId: 'DELTA001',   status: 'CREDENTIALED', approvalDate: new Date('2023-03-01'), expiryDate: twoYearsHence, contractType: 'PPO', providerNumber: 'DD-55102' },
+            { payerName: 'Cigna',              payerId: 'CIGNA001',   status: 'CREDENTIALED', approvalDate: new Date('2023-03-15'), expiryDate: twoYearsHence, contractType: 'PPO', providerNumber: 'CG-88731' },
+            { payerName: 'Aetna',              payerId: 'AETNA001',   status: 'EXPIRED',      approvalDate: new Date('2023-04-01'), expiryDate: pastExpiry,    contractType: 'PPO', providerNumber: 'AE-19022', notes: 'Renewal in progress. Do not submit claims.' },
+            { payerName: 'MetLife',            payerId: 'METLIFE001', status: 'CREDENTIALED', approvalDate: new Date('2023-04-10'), expiryDate: twoYearsHence, contractType: 'PPO', providerNumber: 'ML-30041' },
+            { payerName: 'UnitedHealthcare',   payerId: 'UHC001',     status: 'CREDENTIALED', approvalDate: new Date('2023-05-01'), expiryDate: oneYearHence,  contractType: 'PPO', providerNumber: 'UHC-77120' },
+            { payerName: 'Guardian',           payerId: 'GUARD001',   status: 'CREDENTIALED', approvalDate: new Date('2023-05-15'), expiryDate: twoYearsHence, contractType: 'PPO', providerNumber: 'GD-56201' },
+            { payerName: 'Humana',             payerId: 'HUMANA001',  status: 'NOT_STARTED',  notes: 'Low volume — deferred' },
+            { payerName: 'BCBS',               payerId: 'BCBS001',    status: 'CREDENTIALED', approvalDate: new Date('2023-06-01'), expiryDate: twoYearsHence, contractType: 'PPO', providerNumber: 'BC-22318' },
+            { payerName: 'Medicaid (State)',    payerId: 'MCAID001',   status: 'CREDENTIALED', approvalDate: new Date('2023-06-20'), expiryDate: oneYearHence,  contractType: 'Medicaid', providerNumber: 'TX-882311' },
+            { payerName: 'Medicare Advantage', payerId: 'MCARE001',   status: 'NOT_STARTED' },
+          ],
+        },
+        events: {
+          create: [
+            { payerName: 'Aetna', event: 'Credential expiry notice received. Renewal application submitted.', updatedBy: 'demo@claimguard.ai', createdAt: new Date(now.getTime() - 86400000 * 45) },
+            { payerName: 'Aetna', event: 'Status changed: CREDENTIALED → EXPIRED — Awaiting renewal approval', updatedBy: 'demo@claimguard.ai', createdAt: new Date(pastExpiry) },
+          ],
+        },
+      },
+    });
+
+    console.log('Created 3 sample providers:', p1.id, p2.id, p3.id);
+  } else {
+    console.log('Providers already seeded — skipping');
+  }
+
+  // ── Seed Month End Close (Feb 2026, 75% complete) ─────────────────────────
+  const feb2026Close = await prisma.monthEndClose.upsert({
+    where: { practiceId_month_year: { practiceId: practice.id, month: 2, year: 2026 } },
+    update: {},
+    create: { practiceId: practice.id, month: 2, year: 2026, notes: 'ERA from Cigna still pending reconciliation. All other payers balanced.' },
+  });
+
+  // Phase 1 (all 7) + Phase 2 (all 5) + Phase 3 (all 6) + Phase 4 (3 of 6) = 21 checked
+  const feb2026CheckedItems = [
+    // Phase 1 — AR Cleanup
+    { phase: 1, itemKey: 'ar_aging_report' },
+    { phase: 1, itemKey: 'ar_unpaid_claims' },
+    { phase: 1, itemKey: 'ar_followup_calls' },
+    { phase: 1, itemKey: 'ar_write_offs' },
+    { phase: 1, itemKey: 'ar_patient_balances' },
+    { phase: 1, itemKey: 'ar_credits' },
+    { phase: 1, itemKey: 'ar_secondary' },
+    // Phase 2 — Unbilled Procedures
+    { phase: 2, itemKey: 'unbilled_missing_info' },
+    { phase: 2, itemKey: 'unbilled_walkouts' },
+    { phase: 2, itemKey: 'unbilled_lab' },
+    { phase: 2, itemKey: 'unbilled_preauths' },
+    { phase: 2, itemKey: 'unbilled_verify' },
+    // Phase 3 — ERA Reconciliation
+    { phase: 3, itemKey: 'era_download' },
+    { phase: 3, itemKey: 'era_post' },
+    { phase: 3, itemKey: 'era_match' },
+    { phase: 3, itemKey: 'era_exceptions' },
+    { phase: 3, itemKey: 'era_paper_eob' },
+    { phase: 3, itemKey: 'era_deposit_match' },
+    // Phase 4 — Financial Reconciliation (3 of 6)
+    { phase: 4, itemKey: 'fin_production' },
+    { phase: 4, itemKey: 'fin_collections' },
+    { phase: 4, itemKey: 'fin_adjustments' },
+  ];
+
+  for (const item of feb2026CheckedItems) {
+    await prisma.monthEndItem.upsert({
+      where: { closeId_itemKey: { closeId: feb2026Close.id, itemKey: item.itemKey } },
+      update: {},
+      create: {
+        closeId: feb2026Close.id,
+        phase: item.phase,
+        itemKey: item.itemKey,
+        checked: true,
+        checkedBy: 'demo@claimguard.ai',
+        checkedAt: new Date('2026-02-28T10:00:00Z'),
+      },
+    });
+  }
+
+  console.log('Created Feb 2026 month-end close (21/31 items checked)');
+
   console.log('Seed complete!');
 }
 

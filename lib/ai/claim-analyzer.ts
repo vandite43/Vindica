@@ -18,8 +18,6 @@ export async function analyzeClaim(claim: ClaimInput, payerIntelligence: PayerDa
   const prompt = `Analyze this dental insurance claim and return a JSON risk assessment.
 
 Claim Details:
-- Patient: ${claim.patientName}, DOB: ${claim.patientDob}
-- Insurance ID: ${claim.patientInsuranceId}
 - Payer: ${claim.payerName} (ID: ${claim.payerId})
 - Plan Type: ${claim.planType || 'Unknown'}
 - Service Date: ${claim.serviceDate}
@@ -49,7 +47,7 @@ Return ONLY this JSON structure:
   try {
     const response = await client.messages.create({
       model,
-      max_tokens: 2000,
+      max_tokens: 4000,
       system: CLAIM_ANALYZER_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     });

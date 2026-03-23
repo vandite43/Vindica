@@ -26,6 +26,14 @@ export async function generateAppealLetter(
   payerIntelligence: PayerData | null,
   model: string = DEFAULT_AI_MODEL
 ): Promise<string> {
+  // ── HIPAA COMPLIANCE ────────────────────────────────────────────────────────
+  // PHI (patient name, DOB, insurance ID) must NEVER be sent to Anthropic.
+  // The prompt uses [PATIENT_NAME], [PATIENT_DOB], [PATIENT_INSURANCE_ID] as
+  // literal placeholder tokens. After the API call returns, real PHI is
+  // substituted locally (see .replace() calls at the bottom of this function).
+  // This function asserts that PHI did not leak into the prompt before sending.
+  // ───────────────────────────────────────────────────────────────────────────
+
   const payerContext = payerIntelligence
     ? `\nKnown payer quirks: ${payerIntelligence.documentationQuirks.join('; ')}`
     : '';
@@ -34,9 +42,9 @@ export async function generateAppealLetter(
 
   const prompt = `Generate a professional dental insurance appeal letter for this denied claim.
 
-Patient: ${claim.patientName}
-Date of Birth: ${new Date(claim.patientDob).toLocaleDateString()}
-Insurance ID: ${claim.patientInsuranceId}
+Patient: [PATIENT_NAME]
+Date of Birth: [PATIENT_DOB]
+Insurance ID: [PATIENT_INSURANCE_ID]
 Payer: ${claim.payerName}
 Plan Type: ${claim.planType || 'PPO'}
 Service Date: ${new Date(claim.serviceDate).toLocaleDateString()}
@@ -49,12 +57,24 @@ ${knowledgeContext}
 
 Write a complete, professional appeal letter ready to mail. Use [DATE], [CLAIM NUMBER], [REFERENCE NUMBER], and [PROVIDER NPI] as placeholders where needed.`;
 
+  // PHI assertion — throws before sending if any PHI leaked into the prompt
+  const phiPatterns = [claim.patientName, claim.patientInsuranceId].filter(Boolean);
+  for (const phi of phiPatterns) {
+    if (prompt.includes(phi)) {
+      throw new Error('HIPAA violation prevented: PHI detected in AI prompt. Generation blocked.');
+    }
+  }
+
   const response = await client.messages.create({
     model,
-    max_tokens: 1500,
+    max_tokens: 3000,
     system: APPEAL_GENERATOR_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
   });
 
-  return response.content[0].type === 'text' ? response.content[0].text : 'Appeal letter generation failed.';
+  const letter = response.content[0].type === 'text' ? response.content[0].text : 'Appeal letter generation failed.';
+  return letter
+    .replace(/\[PATIENT_NAME\]/g, claim.patientName)
+    .replace(/\[PATIENT_DOB\]/g, new Date(claim.patientDob).toLocaleDateString())
+    .replace(/\[PATIENT_INSURANCE_ID\]/g, claim.patientInsuranceId);
 }

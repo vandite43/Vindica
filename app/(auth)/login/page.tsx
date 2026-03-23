@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { VindicaLogo } from '@/components/layout/VindicaLogo';
@@ -9,8 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const timedOut = searchParams.get('reason') === 'timeout';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,16 +22,45 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    });
-    setLoading(false);
-    if (result?.error) {
-      setError('Invalid email or password');
-    } else {
+
+    try {
+      // Step 1: validate credentials without creating a session
+      const checkRes = await fetch('/api/auth/credentials-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!checkRes.ok) {
+        const data = await checkRes.json();
+        setError(data.error || 'Invalid email or password');
+        return;
+      }
+
+      const { userId, mfaEnabled } = await checkRes.json();
+
+      if (mfaEnabled) {
+        // Step 2a: send MFA code and redirect to verify page
+        await fetch('/api/auth/send-mfa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
+        router.push(`/auth/verify?userId=${userId}&email=${encodeURIComponent(email)}`);
+        return;
+      }
+
+      // Step 2b: MFA disabled — create session directly
+      const result = await signIn('credentials', { email, password, redirect: false });
+      if (result?.error) {
+        setError('Sign in failed. Please try again.');
+        return;
+      }
       router.push('/dashboard');
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -44,6 +75,11 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {timedOut && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded text-amber-700 text-sm">
+                You were logged out due to inactivity.
+              </div>
+            )}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
                 {error}
@@ -68,5 +104,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

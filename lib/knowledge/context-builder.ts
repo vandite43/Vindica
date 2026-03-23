@@ -3,6 +3,7 @@ import { CDT_CODES } from './cdt-codes';
 import { PAYER_POLICIES } from './payer-policies';
 import { ICD10_SUPPORT } from './icd10-support';
 import { CLINICAL_GUIDELINES, CDT_TO_GUIDELINE_MAP } from './clinical-guidelines';
+import { BUNDLING_MASTER, CARC_DENIAL_CODES, TIMELY_FILING, APPEAL_STRATEGY } from './billing-rules';
 
 export function buildClaimContext(claim: ClaimInput): string {
   const sections: string[] = [];
@@ -22,6 +23,17 @@ export function buildClaimContext(claim: ClaimInput): string {
   // 4. Clinical guidelines
   const guidelinesSection = buildGuidelinesSection(claim.cdtCodes);
   if (guidelinesSection) sections.push(guidelinesSection);
+
+  // 5. Bundling master rules relevant to this claim
+  const bundlingSection = buildBundlingSection(claim.cdtCodes);
+  if (bundlingSection) sections.push(bundlingSection);
+
+  // 6. CARC denial code action guide (if this is a re-analysis of a denied claim)
+  const carcSection = buildCarcSection((claim as ClaimInput & { denialCode?: string | null }).denialCode);
+  if (carcSection) sections.push(carcSection);
+
+  // 7. Timely filing context for this payer
+  sections.push(TIMELY_FILING);
 
   if (sections.length === 0) return '';
 
@@ -43,6 +55,9 @@ export function buildAppealContext(cdtCodes: string[], payerId: string, denialRe
   const appealTipsSection = buildAppealTipsSection(payerId, denialReason);
   if (appealTipsSection) sections.push(appealTipsSection);
 
+  // Always inject appeal strategy — counter-language, banned words, ERISA rights
+  sections.push(APPEAL_STRATEGY);
+
   if (sections.length === 0) return '';
 
   return `\n\n[KNOWLEDGE BASE — USE THIS TO WRITE THE APPEAL]\n${'='.repeat(60)}\n${sections.join('\n\n')}\n${'='.repeat(60)}`;
@@ -58,6 +73,7 @@ function buildCdtSection(cdtCodes: string[]): string {
     found = true;
 
     lines.push(`\n${code} — ${entry.description}`);
+    lines.push(`  Denial risk: ${entry.denialRisk}`);
     lines.push(`  Required documentation: ${entry.requiredDocs.join(' | ')}`);
     lines.push(`  Frequency limit: ${entry.frequencyLimit}`);
     if (entry.bundlingConflicts.length > 0) {
@@ -68,6 +84,10 @@ function buildCdtSection(cdtCodes: string[]): string {
     }
     if (entry.supportingDiagnoses.length > 0) {
       lines.push(`  Diagnosis codes that support this procedure: ${entry.supportingDiagnoses.join(', ')}`);
+    }
+    if (entry.criticalNotes && entry.criticalNotes.length > 0) {
+      lines.push(`  ⚠ CRITICAL NOTES:`);
+      entry.criticalNotes.forEach(note => lines.push(`    - ${note}`));
     }
   }
 
@@ -122,6 +142,20 @@ function buildPayerSection(payerId: string, cdtCodes: string[]): string {
     for (const warning of relevantBundling) {
       lines.push(`  • ${warning}`);
     }
+  }
+
+  // Include behavior notes and timely filing for this payer
+  if (policy.behaviorNotes && policy.behaviorNotes.length > 0) {
+    lines.push('\nPayer behavior notes:');
+    for (const note of policy.behaviorNotes) {
+      lines.push(`  • ${note}`);
+    }
+  }
+  if (policy.timelyFiling) {
+    lines.push(`\nTimely filing deadline: ${policy.timelyFiling}`);
+  }
+  if (policy.appealWindow) {
+    lines.push(`Appeal window: ${policy.appealWindow}`);
   }
 
   return lines.length > 1 ? lines.join('\n') : '';
@@ -193,6 +227,24 @@ function buildGuidelinesSection(cdtCodes: string[]): string {
   }
 
   return lines.join('\n');
+}
+
+function buildBundlingSection(cdtCodes: string[]): string {
+  // Filter BUNDLING_MASTER lines to only those mentioning a code in the claim
+  const relevantLines = BUNDLING_MASTER.split('\n').filter(line => {
+    return cdtCodes.some(code => line.includes(code));
+  });
+  if (relevantLines.length === 0) return '';
+  return 'BUNDLING WARNINGS FOR CODES IN THIS CLAIM:\n' + relevantLines.join('\n');
+}
+
+function buildCarcSection(denialCode?: string | null): string {
+  if (!denialCode) return '';
+  // Look for the CARC entry matching this code
+  const lines = CARC_DENIAL_CODES.split('\n\n');
+  const match = lines.find(block => block.startsWith(denialCode));
+  if (!match) return '';
+  return `DENIAL CODE ACTION GUIDE:\n${match}`;
 }
 
 function buildAppealTipsSection(payerId: string, denialReason: string): string {

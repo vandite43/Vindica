@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { generateAppealLetter } from '@/lib/ai/appeal-generator';
+import { getAppeal, saveAppealLetter } from '@/lib/db/appeals';
+import { writeAuditLog } from '@/lib/audit';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -11,13 +13,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
     const model: string | undefined = body.model;
-    const appeal = await prisma.appeal.findUnique({
-      where: { id },
-      include: {
-        claim: { include: { practice: { select: { userId: true } } } },
-      },
-    });
 
+    const appeal = await getAppeal(id);
     if (!appeal) return NextResponse.json({ error: 'Appeal not found' }, { status: 404 });
     if (appeal.claim.practice.userId !== session.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -29,23 +26,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       claim.denialReason || 'Claim denied — see EOB for details',
       payerIntelligence
         ? {
-            id: payerIntelligence.id,
-            payerId: payerIntelligence.payerId,
-            name: payerIntelligence.name,
-            state: payerIntelligence.state,
-            denialRate: payerIntelligence.denialRate,
-            avgProcessDays: payerIntelligence.avgProcessDays,
+            id:                  payerIntelligence.id,
+            payerId:             payerIntelligence.payerId,
+            name:                payerIntelligence.name,
+            state:               payerIntelligence.state,
+            denialRate:          payerIntelligence.denialRate,
+            avgProcessDays:      payerIntelligence.avgProcessDays,
             commonDenialReasons: payerIntelligence.commonDenialReasons,
-            requiresPreAuth: payerIntelligence.requiresPreAuth,
+            requiresPreAuth:     payerIntelligence.requiresPreAuth,
             documentationQuirks: payerIntelligence.documentationQuirks,
           }
         : null,
       model
     );
 
-    const updated = await prisma.appeal.update({
-      where: { id },
-      data: { letterContent: letter, generatedAt: new Date() },
+    const updated = await saveAppealLetter(id, letter);
+
+    await writeAuditLog({
+      userId: session!.user.id,
+      userEmail: session!.user.email!,
+      action: 'CREATE',
+      resource: `appeal:${id}`,
+      outcome: 'SUCCESS',
+      details: 'Appeal letter generated (PHI not transmitted to AI)',
     });
 
     return NextResponse.json(updated);

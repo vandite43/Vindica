@@ -26,6 +26,10 @@ Your letters:
 - Are 400-700 words
 - Have a clear structure: header, denial reference, clinical justification, supporting documentation list, regulatory references, and demand for reconsideration within 30 days
 
-Write the complete letter ready to send. Use [PLACEHOLDER] for information that needs to be filled in.`;
+Write the complete letter ready to send.
+
+PLACEHOLDER RULES — follow exactly:
+- [PATIENT_NAME], [PATIENT_DOB], and [PATIENT_INSURANCE_ID] are pre-defined tokens that will be substituted server-side. Preserve them verbatim — do NOT replace, infer, or fill in actual patient information.
+- Use [DATE], [CLAIM NUMBER], [REFERENCE NUMBER], and [PROVIDER NPI] where those values are needed and will be filled in manually.`;
 
 export const CDT_OPTIMIZER_SYSTEM_PROMPT = `You are an expert dental coding specialist. Analyze CDT procedure codes and suggest optimizations that improve claim approval rates while maintaining clinical accuracy. Consider payer-specific preferences, common downcoding patterns, and bundling rules.`;
