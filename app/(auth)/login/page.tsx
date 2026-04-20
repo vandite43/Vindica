@@ -53,7 +53,11 @@ function LoginForm() {
       // Step 2b: MFA disabled — create session directly
       const result = await signIn('credentials', { email, password, redirect: false });
       if (result?.error) {
-        setError('Sign in failed. Please try again.');
+        setError(`signIn error: ${result.error} | ok: ${result.ok} | url: ${result.url}`);
+        return;
+      }
+      if (!result?.ok) {
+        setError(`signIn not ok: ${JSON.stringify(result)}`);
         return;
       }
       window.location.assign('/dashboard');
