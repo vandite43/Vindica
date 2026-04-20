@@ -60,10 +60,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Only reaches here for users with mfaEnabled=false.
         // MFA-enabled users must go through /api/auth/credentials-check
         // → /api/auth/send-mfa → /api/auth/verify-mfa → mfaToken path above.
-        if (!password) return null;
+        if (!password) { console.error('[authorize] No password provided'); return null; }
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        let user;
+        try {
+          user = await prisma.user.findUnique({ where: { email } });
+        } catch (dbErr) {
+          console.error('[authorize] DB query failed:', dbErr);
+          return null;
+        }
+
         if (!user || !user.password || !user.isActive) {
+          console.error('[authorize] User not found / no password / inactive:', { found: !!user, hasPassword: !!user?.password, isActive: user?.isActive });
           await writeAuditLog({
             userEmail: email,
             action: 'LOGIN',
@@ -75,6 +83,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         const isValid = await bcrypt.compare(password, user.password);
+        console.error('[authorize] bcrypt result:', isValid, 'email:', email);
         if (!isValid) {
           await writeAuditLog({
             userId: user.id,
@@ -89,6 +98,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         // Block direct session creation for MFA-enabled users
         if (user.mfaEnabled) {
+          console.error('[authorize] MFA-enabled user tried password path');
           return null;
         }
 
