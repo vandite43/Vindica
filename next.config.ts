@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
       dynamic: 0,
     },
   },
+  serverExternalPackages: ['pg', '@prisma/adapter-pg', 'bcryptjs'],
 };
 
 export default nextConfig;
