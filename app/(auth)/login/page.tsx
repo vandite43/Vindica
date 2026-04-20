@@ -56,7 +56,7 @@ function LoginForm() {
         setError('Sign in failed. Please try again.');
         return;
       }
-      router.push('/dashboard');
+      window.location.assign('/dashboard');
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
