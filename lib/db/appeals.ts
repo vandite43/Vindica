@@ -49,25 +49,39 @@ export async function saveAppealLetter(id: string, letterContent: string): Promi
   return decryptLetter(updated);
 }
 
-export async function listAppeals(practiceId: string): Promise<AppealWithClaim[]> {
-  const appeals = await prisma.appeal.findMany({
-    where: { claim: { practiceId } },
-    include: {
-      claim: {
-        select: {
-          id: true, patientName: true, payerName: true, cdtCodes: true,
-          totalAmount: true, denialReason: true, serviceDate: true,
+export async function listAppeals(
+  practiceId: string,
+  limit = 50,
+  offset = 0,
+): Promise<{ appeals: AppealWithClaim[]; total: number }> {
+  const cap = Math.min(limit, 100);
+  const where = { claim: { practiceId } };
+
+  const [rows, total] = await Promise.all([
+    prisma.appeal.findMany({
+      where,
+      include: {
+        claim: {
+          select: {
+            id: true, patientName: true, payerName: true, cdtCodes: true,
+            totalAmount: true, denialReason: true, serviceDate: true,
+          },
         },
       },
-    },
-    orderBy: { generatedAt: 'desc' },
-  });
+      orderBy: { generatedAt: 'desc' },
+      take: cap,
+      skip: offset,
+    }),
+    prisma.appeal.count({ where }),
+  ]);
 
-  return appeals.map((a) => ({
+  const appeals = rows.map((a) => ({
     ...decryptLetter(a),
     claim: {
       ...a.claim,
       patientName: safeDecrypt(a.claim.patientName),
     },
   }));
+
+  return { appeals, total };
 }

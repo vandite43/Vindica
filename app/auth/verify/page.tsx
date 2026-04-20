@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { VindicaMark } from '@/components/layout/VindicaMark';
+import { VyndicoMark } from '@/components/layout/VyndicoMark';
 
 const RESEND_COOLDOWN = 60; // seconds
 
@@ -80,7 +80,7 @@ function VerifyForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? 'Invalid or expired code. Please try again.');
+        setError((data.error ?? 'Invalid or expired code.') + (data.detail ? ` — ${data.detail}` : ''));
         setDigits(Array(6).fill(''));
         inputRefs.current[0]?.focus();
         return;
@@ -130,7 +130,7 @@ function VerifyForm() {
       <Card className="w-full max-w-md shadow-xl" style={{ backgroundColor: '#F8F7FF' }}>
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
-            <VindicaMark size={48} />
+            <VyndicoMark size={48} />
           </div>
           <h1
             className="text-2xl font-bold text-gray-900"

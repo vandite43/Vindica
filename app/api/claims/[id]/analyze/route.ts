@@ -3,19 +3,33 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { analyzeClaim } from '@/lib/ai/claim-analyzer';
 import { getClaimById, updateClaim } from '@/lib/db/claims';
+import { getGlobalAIModel } from '@/lib/system-config';
+import { isRateLimited } from '@/lib/auth/rate-limit';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Rate limit: 10 AI analyses per user per minute
+    // TODO: replace with Redis-backed limiter before multi-instance deployment
+    if (isRateLimited(`analyze:${session.user.id}`, 10, 60_000)) {
+      return NextResponse.json({ error: 'Too many requests. Please wait before analyzing again.' }, { status: 429 });
+    }
+
     const { id } = await params;
-    const body = await req.json().catch(() => ({}));
-    const model: string | undefined = body.model;
+    await req.json().catch(() => ({})); // body not used
+    const model = await getGlobalAIModel();
 
     const claim = await getClaimById(id);
     if (!claim) return NextResponse.json({ error: 'Claim not found' }, { status: 404 });
-    if (claim.practice?.userId !== session.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const userPractice = await prisma.practice.findFirst({
+      where: { OR: [{ userId: session.user.id }, { members: { some: { id: session.user.id } } }] },
+      select: { id: true },
+    });
+    if (!userPractice || claim.practiceId !== userPractice.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const payerIntelligence = await prisma.payer.findUnique({ where: { payerId: claim.payerId } });
 
@@ -68,7 +82,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ claim: updated, analysis });
   } catch (error) {
-    console.error(error);
+    console.error('[analyze]', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

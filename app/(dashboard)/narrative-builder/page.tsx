@@ -1,7 +1,7 @@
-import Header from '@/components/layout/Header';
+﻿import Header from '@/components/layout/Header';
 import NarrativeBuilderClient from '@/components/narrative-builder/NarrativeBuilderClient';
 
-export const metadata = { title: 'Clinical Narrative Builder — Vindica' };
+export const metadata = { title: 'Clinical Narrative Builder — Vyndico' };
 
 export default function NarrativeBuilderPage() {
   return (

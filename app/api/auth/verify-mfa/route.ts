@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { writeAuditLog } from '@/lib/audit';
+import { notifyNewDeviceLogin } from '@/lib/notifications/send';
+import { isRateLimited } from '@/lib/auth/rate-limit';
 
 const MAX_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 30 * 60 * 1000; // 30 minutes
@@ -14,6 +16,15 @@ const MFA_TOKEN_TTL_MS = 5 * 60 * 1000;  // 5 minutes for post-verify signIn
  */
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
+      ?? req.headers.get('x-real-ip')
+      ?? 'unknown';
+
+    // 10 verify attempts per IP per 15 minutes
+    if (isRateLimited(`verify-mfa:${ip}`, 10, 15 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+    }
+
     const { userId, code } = await req.json();
 
     if (!userId || !code) {
@@ -68,6 +79,13 @@ export async function POST(req: NextRequest) {
     const mfaToken = crypto.randomUUID();
     const mfaTokenExpiry = new Date(Date.now() + MFA_TOKEN_TTL_MS);
 
+    const currentIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
+      ?? req.headers.get('x-real-ip')
+      ?? 'unknown';
+
+    const previousIp = user.lastKnownIp ?? null;
+    const isNewDevice = previousIp !== null && currentIp !== 'unknown' && currentIp !== previousIp;
+
     await prisma.user.update({
       where: { id: userId },
       data: {
@@ -77,8 +95,14 @@ export async function POST(req: NextRequest) {
         mfaLockedUntil: null,
         mfaToken,
         mfaTokenExpiry,
+        lastKnownIp: currentIp,
       },
     });
+
+    // Alert admin if this is a new IP (fire-and-forget)
+    if (isNewDevice && user.practiceId) {
+      notifyNewDeviceLogin(user.practiceId, user.id, user.email, currentIp, previousIp).catch(() => {});
+    }
 
     await writeAuditLog({
       userId: user.id,

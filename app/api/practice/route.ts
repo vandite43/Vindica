@@ -5,12 +5,12 @@ import { protect } from '@/lib/auth/protect';
 
 export async function GET(req: NextRequest) {
   try {
-    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER']);
     if (guard) return guard;
 
     const session = await auth();
-    const practice = await prisma.practice.findUnique({
-      where: { userId: session!.user.id },
+    const practice = await prisma.practice.findFirst({
+      where: { OR: [{ userId: session!.user.id }, { members: { some: { id: session!.user.id } } }] },
       select: { id: true, name: true, npi: true, npiType2: true, taxId: true, address: true, billingAddress: true, state: true },
     });
 
@@ -24,14 +24,14 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER']);
     if (guard) return guard;
 
     const session = await auth();
     const body = await req.json();
     const { npiType2, taxId, billingAddress, name, npi, address, state } = body;
 
-    const practice = await prisma.practice.findUnique({ where: { userId: session!.user.id } });
+    const practice = await prisma.practice.findFirst({ where: { OR: [{ userId: session!.user.id }, { members: { some: { id: session!.user.id } } }] } });
     if (!practice) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const updated = await prisma.practice.update({

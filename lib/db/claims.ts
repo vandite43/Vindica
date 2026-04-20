@@ -121,7 +121,7 @@ export async function createClaim(
 
 export async function getClaimById(id: string): Promise<DecryptedClaim | null> {
   const claim = await prisma.claim.findUnique({
-    where: { id },
+    where: { id, deletedAt: null },
     include: {
       appeal:   true,
       practice: { select: { userId: true } },
@@ -134,20 +134,28 @@ export async function getClaimById(id: string): Promise<DecryptedClaim | null> {
 export async function listClaims(
   practiceId: string,
   filters: { status?: string; riskLevel?: string; payerId?: string },
-): Promise<DecryptedClaim[]> {
-  const where: Record<string, unknown> = { practiceId };
-  if (filters.status   && filters.status   !== 'ALL') where.status   = filters.status;
+  pagination: { limit?: number; offset?: number } = {},
+): Promise<{ claims: DecryptedClaim[]; total: number }> {
+  const limit  = Math.min(pagination.limit  ?? 50, 100);
+  const offset = pagination.offset ?? 0;
+
+  const where: Record<string, unknown> = { practiceId, deletedAt: null };
+  if (filters.status    && filters.status    !== 'ALL') where.status    = filters.status;
   if (filters.riskLevel && filters.riskLevel !== 'ALL') where.riskLevel = filters.riskLevel;
   if (filters.payerId) where.payerId = filters.payerId;
 
-  const claims = await prisma.claim.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    include: { appeal: true },
-    take: 100,
-  });
+  const [rows, total] = await Promise.all([
+    prisma.claim.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: { appeal: true },
+      take: limit,
+      skip: offset,
+    }),
+    prisma.claim.count({ where }),
+  ]);
 
-  return claims.map(c => decryptPHIWithRelations(c));
+  return { claims: rows.map(c => decryptPHIWithRelations(c)), total };
 }
 
 export async function updateClaim(
@@ -218,8 +226,9 @@ export async function updateClaim(
 }
 
 export async function deleteClaim(id: string): Promise<void> {
-  const claim = await prisma.claim.findUnique({ where: { id }, include: { appeal: true } });
+  const claim = await prisma.claim.findUnique({ where: { id, deletedAt: null }, include: { appeal: true } });
   if (!claim) return;
+  // Hard-delete the appeal so it can't be accessed orphaned, then soft-delete the claim
   if (claim.appeal) await prisma.appeal.delete({ where: { claimId: id } });
-  await prisma.claim.delete({ where: { id } });
+  await prisma.claim.update({ where: { id }, data: { deletedAt: new Date() } });
 }

@@ -16,6 +16,98 @@
 
 ## Completed Work
 
+### 2026-04-19 — Full Security & Code Quality Remediation
+
+Comprehensive audit and fix of 30+ issues across four severity tiers. TypeScript compiles clean (`npx tsc --noEmit` passes).
+
+**Tier 1 — Critical:**
+- **XSS fixed** (`app/(dashboard)/appeals/[id]/page.tsx`) — `downloadPDF()` now HTML-escapes `letterContent` and `patientName` before `document.write()`.
+- **IDOR fixed** (`app/api/providers/[id]/events/route.ts`) — GET and POST now verify the provider belongs to the requesting user's practice.
+- **Mass assignment fixed** (`app/api/appeals/[id]/route.ts`) — PATCH body is now whitelisted to `['status', 'submittedAt', 'resolution', 'resolvedAt', 'amountRecovered']`.
+- **Hardcoded personal email removed** (`app/api/test/notifications/route.ts`) — replaced with `process.env.DEMO_EMAIL`; dead code `void emailModule` removed.
+
+**Tier 2 — High:**
+- **`isOwnerAccount` email gate removed** (`app/(dashboard)/settings/page.tsx`) — `AIModelCard` now gated by `isSuperAdmin` role.
+- **Practice member authorization fixed** — `app/api/appeals/route.ts`, `app/api/appeals/[id]/route.ts`, `app/api/claims/[id]/analyze/route.ts`, `app/api/appeals/[id]/generate/route.ts` all now look up the user's practice via `OR: [userId, member]` and compare `practiceId` rather than checking `practice.userId === session.user.id` (which blocked all non-owner members).
+- **Zod validation added** to 5 API routes: `auth/register`, `users` POST, `month-end/[id]/items`, `month-end/[id]/notes`, `providers/[id]/credentials` POST + PUT.
+- **Prompt injection hardened** (`lib/ai/claim-analyzer.ts`) — added `s()` sanitizer stripping control chars and injection-like tag sequences from all user-controlled fields; data wrapped in `[CLAIM DATA START/END]` delimiters.
+- **payerId whitelist** (`lib/knowledge/context-builder.ts`) — `buildPayerSection()` now validates `payerId` matches `/^[A-Z0-9_\-]{1,50}$/i` before using it as an object key.
+- **Rate limiting applied** to both AI endpoints — `analyze`: 10/min, `generate`: 5/min (uses existing in-memory `isRateLimited`; TODO: Redis-backed for multi-instance).
+- **Zod output validation** on Claude responses (`lib/ai/claim-analyzer.ts`) — `ClaimAnalysisSchema` validates all fields including `denialRiskScore` range (0–100) and enum values.
+
+**Tier 3 — Medium:**
+- **Null-practice ownership bypass fixed** — all ownership checks now use strict equality on `practiceId` (no optional chaining that silently passed on null).
+- **Demo email fallback removed** (`lib/auth.ts`) — extended sessions only activate when `DEMO_ACCOUNT_EMAILS` env var is explicitly set (no hardcoded fallback list).
+- **Real pagination** (`lib/db/claims.ts`) — `listClaims()` now returns `{ claims, total }` with `limit`/`offset` params (default 50, max 100); API route and `ClaimsListView.tsx` updated; `dashboard/page.tsx` destructures new shape.
+- **Race condition fixed** (`app/(dashboard)/claims/[id]/page.tsx`) — `useEffect` now uses `cancelled` flag to prevent stale updates.
+- **Resolution modal error feedback** (`app/(dashboard)/appeals/[id]/page.tsx`) — error state displayed inline when PATCH fails.
+
+**Tier 4 — Low / Cleanup:**
+- **ENCRYPTION_KEY test-mode bypass removed** (`lib/security/encrypt.ts`) — validation runs unconditionally; tests must set a valid 32-byte key.
+
+**Secrets requiring rotation before production:**
+- `NEXTAUTH_SECRET` (currently placeholder value)
+- `CRON_SECRET` (currently `vindica-cron-secret-2026`)
+- Add `DEMO_EMAIL=<your-email>` if test notifications endpoint is needed
+
+---
+
+### 2026-04-04 — National Denial Benchmarks + Practice/National Tab Toggle
+
+- **`NationalBenchmark` Prisma model** — new table with `year`, `quarter`, `source`, `data Json`, `publishedAt`; unique on `[year, quarter]`. Migration: `add_national_benchmarks`.
+- **Seeded 8 quarters** of national data (2023 Q3 – 2025 Q2) in `prisma/seed.ts`, using ADA HPI + NADP Annual Dental Benefits Report figures. Each quarter has: `overallDenialRate`, `prevQuarterDenialRate`, `appealWinRate`, `avgProcessingDays`, `denialsByReason`, `denialsByPayerType`, `denialsByProcedureCategory`.
+- **`app/api/analytics/national/route.ts`** — GET (any authenticated user): returns last 8 quarters as `{ latest, trend }`. POST (SUPER_ADMIN only): upserts a new quarterly snapshot.
+- **`components/denial-trends/NationalBenchmarksView.tsx`** — new component: 4 metric cards (denial rate QoQ trend, appeal win rate, avg processing days, data period/source), quarterly trend LineChart with 5% reference line, denial rate by payer BarChart + table, denial by reason Pie/donut + overturn rate table, procedure category horizontal BarChart, source footnote.
+- **`DenialTrendsDashboard.tsx`** — added segment control toggle ("My Practice" / "National Benchmarks") at top; lazy-fetches national data on first switch to National view (cached in state); date range filter hidden in National view. Practice view unchanged.
+- **Quarterly update mechanism**: SUPER_ADMIN calls `POST /api/analytics/national` to add each new quarter. No external API polling.
+
+### 2026-04-03 — SUPER_ADMIN Route Coverage (Complete)
+
+- **Added `SUPER_ADMIN` to all API `protect()` calls** — bulk-replaced all `['ADMIN']` and `['ADMIN', 'OFFICE_MANAGER']` patterns across 29 `protect()` call sites in `app/api/**/*.ts`. SUPER_ADMIN now has access to every admin-gated endpoint.
+- **Fixed all practice lookups** — replaced every `prisma.practice.findUnique({ where: { userId } })` in API routes with `findFirst({ where: { OR: [{ userId }, { members: { some: { id: userId } } }] } })`. This ensures SUPER_ADMIN users who are practice members (not just owners) can access practice-scoped data. 16 occurrences updated across: `claims/route.ts`, `analytics/denials/route.ts`, `appeals/route.ts`, `practice/route.ts`, `providers/route.ts`, `providers/[id]/route.ts`, `users/route.ts`, `users/[id]/route.ts`, `settings/notifications/route.ts`, `month-end/route.ts`.
+
+### 2026-04-02 — Global AI Model Setting (SUPER_ADMIN only)
+
+- **Added `SystemConfig` Prisma model** (`key String @id, value String, updatedAt, updatedBy`) for system-wide key/value settings.
+- **`lib/system-config.ts`** — `getGlobalAIModel()` reads `ai_model` key from DB (falls back to `DEFAULT_AI_MODEL`); `setGlobalAIModel()` upserts.
+- **`app/api/system/config/route.ts`** — GET (all authenticated users, returns `{ aiModel }`); PATCH (SUPER_ADMIN only, validates against `AI_MODELS` list).
+- **API routes now ignore client-supplied model**: `/api/claims/[id]/analyze` and `/api/appeals/[id]/generate` both call `getGlobalAIModel()` from DB — the client body `model` field is no longer read or trusted.
+- **`AIModelCard`** now fetches from API on mount; shows read-only view with Lock icon for non-SUPER_ADMIN; SUPER_ADMIN can click to change (saves via PATCH immediately).
+- **Cleaned up**: removed `getStoredModel()` import and usage from `claims/[id]/page.tsx` and `appeals/[id]/page.tsx`.
+- **Also (same session)**: set `demo@claimguard.ai` to `SUPER_ADMIN`; backfilled `practiceId` on 43 existing audit log records.
+- **Note**: after every `prisma migrate dev`, must also run `npx prisma generate` manually — the config does not auto-generate in this setup.
+
+### 2026-04-02 — Two-Tier Audit Log System
+
+- **Added `SUPER_ADMIN` role** to Prisma `Role` enum and `lib/auth/roles.ts`. `huseynaghayev61@gmail.com` (Huseyn) was set to `SUPER_ADMIN` in the DB directly.
+- **Schema migration** `add_super_admin_and_audit_fields`: added `practiceId String?`, `userAgent String?` to `AuditLog`; new indexes on `[practiceId, timestamp]` and `[userId, timestamp]`; added `PHI_ACCESS`, `EXPORT`, `MFA_CHANGE`, `USER_CREATED`, `USER_DEACTIVATED` to `AuditAction` enum; added `auditLogs AuditLog[]` back-relation on `Practice`.
+- **`lib/audit.ts`** — `writeAuditLog()` now accepts optional `practiceId` and `userAgent` params (backward-compatible).
+- **New API routes:**
+  - `app/api/audit/route.ts` — practice-scoped, ADMIN+, paginated 25/page, CSV export
+  - `app/api/audit/system/route.ts` — SUPER_ADMIN only, cross-practice, includes practice name column + userAgent
+- **New UI:**
+  - `components/settings/AuditLogTable.tsx` — shared client component: filters (date, action, email, practiceId for system), pagination, CSV export button, action color badges
+  - `components/settings/SettingsSubNav.tsx` — horizontal tab nav: General / Audit Log (ADMIN+) / System Audit (SUPER_ADMIN only with "SYSTEM" pill badge)
+  - `app/(dashboard)/settings/layout.tsx` — wraps all /settings/* pages with the sub-nav
+  - `app/(dashboard)/settings/audit-log/page.tsx` — practice tier (redirects to /settings if not ADMIN)
+  - `app/(dashboard)/settings/audit-log/system/page.tsx` — calls `notFound()` for non-SUPER_ADMIN (clean 404, does not reveal page exists)
+- **`settings/page.tsx`** — removed old Audit Logs tab; updated `isAdmin` check to include `SUPER_ADMIN`.
+- **Sidebar** (`components/layout/Sidebar.tsx`) — `ALL_ROLES` and `NON_PROVIDER` arrays updated to include `SUPER_ADMIN`.
+
+### 2026-03-31 — Fix Login: localhost → 127.0.0.1 (IPv6 Resolution Bug)
+
+- **Root cause:** On Windows, `localhost` resolves to `::1` (IPv6) but Docker PostgreSQL only binds to `0.0.0.0:5432` (IPv4). All `pg` connections from the Node.js process (Next.js dev server) were getting `ECONNRESET`, causing Prisma P1017 "Server has closed the connection" errors on every DB query, making login return "Internal server error".
+- **Fix:** Changed all three connection string occurrences from `localhost` → `127.0.0.1`:
+  - `.env.local`: `DATABASE_URL="postgresql://postgres:password@127.0.0.1:5432/claimguard"`
+  - `prisma.config.ts`: fallback URL updated to `127.0.0.1`
+  - `lib/db/index.ts`: fallback URL updated to `127.0.0.1`
+- **Rule:** Always use `127.0.0.1` not `localhost` for Docker database connections on Windows.
+- **Verified:** `POST /api/auth/credentials-check` returns `{"userId":...,"email":"demo@claimguard.ai","mfaEnabled":true}` successfully.
+
+### 2026-03-31 — 2FA Email Override for Demo Account
+
+- **app/api/auth/send-mfa/route.ts** — added demo-account redirect: when `user.email === 'demo@claimguard.ai'`, the 2FA code is delivered to `huseynaghayev61@gmail.com` instead. All other accounts receive codes at their own login email. No schema changes made.
+
 ### 2026-03-15 — Full MVP Build (Phases 1–6)
 
 **Phase 1 — Foundation**
@@ -429,7 +521,7 @@ Added full HIPAA-grade MFA to the login flow. Users with `mfaEnabled=true` (defa
 - `components/settings/PracticeStats.tsx` — 8 KPI cards with skeleton loaders.
 
 **Email (Resend):**
-- `lib/email.ts` — switched from Mailtrap to Resend SDK. Sender: `noreply@hsnhgroup.com`.
+- `lib/email.ts` — switched from Mailtrap to Resend SDK. Sender: `noreply@vyndico.com`.
 - `.env.local` — added `RESEND_API_KEY`.
 
 **Field-level AES-256-GCM PHI Encryption (COMPLETE):**
@@ -617,12 +709,110 @@ Built a full month-end billing close workflow at `/month-end`. ADMIN and OFFICE_
 
 ---
 
+### 2026-04-01 — MFA Email: Branded HTML Template
+
+- **`lib/notifications/email.ts`** — added `sendMfaEmail({ to, code, practiceName })`. Uses the same Vindica branded HTML template as notification emails (violet header, DM Sans, ghost background) but with a centred large monospace code block (`font-size:40px`, letter-spacing, #F0EEFF background tile, #C4B5FD border) instead of paragraphs.
+- **`app/api/auth/send-mfa/route.ts`** — switched import from `sendEmail` in `lib/email` to `sendMfaEmail` from `lib/notifications/email`. Also fetches `practice.name` / `memberOf.name` so the practice name appears in the email header. Falls back to "Vindica" if neither is set.
+
+---
+
+### 2026-04-01 — Notification Test Endpoint
+
+- **`app/api/test/notifications/route.ts`** (new) — sends one test email of every notification type (9 total) to `huseynaghayev61@gmail.com`. Protected by `Authorization: Bearer <CRON_SECRET>`. Each email includes a yellow "This is a test email" banner and the notification type name in the header. Added `RESEND_FROM_EMAIL`, `NEXT_PUBLIC_APP_URL`, and `CRON_SECRET` to `.env.local`.
+
+---
+
+### 2026-04-01 — AI Analyzer Hardening: Error Propagation + Determinism + Accuracy
+
+**Error propagation:**
+- `lib/ai/claim-analyzer.ts` — removed the broad catch-all that returned a fake 50%-score degraded response on any error. API errors (auth failures, model not found, rate limits) now propagate up. JSON parsing attempts strip → parse, then regex `/{[\s\S]*}/` extraction, then throws a descriptive error naming the raw output.
+- `app/api/claims/[id]/analyze/route.ts` — returns actual error message in JSON response instead of generic "Internal server error".
+- `app/(dashboard)/claims/[id]/page.tsx` — added `toast.error(body.error ?? 'AI analysis failed...')` so errors surface to the user instead of silently disappearing.
+
+**Determinism:**
+- `lib/ai/claim-analyzer.ts` — added `temperature: 0` to the `client.messages.create()` call. Same claim now produces the same risk score on repeated runs.
+
+**Accuracy (structured system prompt):**
+- `lib/ai/prompts.ts` — rewrote `CLAIM_ANALYZER_SYSTEM_PROMPT` to include 4 explicit steps: (1) per-code checklist (docs, diagnosis support, bundling, pre-auth, downcoding risk), (2) frequency limit check, (3) score calibration anchors (0–20 clean, 21–40 minor, 41–60 moderate, 61–79 high, 80–100 critical), (4) output JSON only.
+
+---
+
+### 2026-04-01 — Provider Field-Level Encryption (HIPAA)
+
+Encrypted sensitive provider credentialing fields using the existing AES-256-GCM pattern. No schema migration needed — all fields were already `String`/`String?`.
+
+**Fields encrypted:** `npiType1`, `licenseNumber`, `deaNumber` (Provider model).
+
+- **`lib/db/providers.ts`** (new) — DAL for Provider records. `encryptProviderFields()` for writes, `decryptProvider()` for reads using `safeDecrypt()` (backwards-compatible: returns plaintext unchanged if no `enc:` prefix). Exports: `createProvider`, `getProviderById`, `listProviders`, `updateProvider`, `deactivateProvider`, `decryptProvider`.
+- **`app/api/providers/route.ts`** — replaced `prisma.provider.findMany()` with `listProviders()`, `prisma.provider.create()` with `createProvider()`.
+- **`app/api/providers/[id]/route.ts`** — replaced direct Prisma calls with `getProviderById()`, `updateProvider()`, `deactivateProvider()`.
+
+---
+
+### 2026-04-01 — Email Notification System (Resend)
+
+Full notification system: 8 trigger types, nightly cron for AR thresholds, Vindica-branded HTML email template, DB-backed deduplication, per-practice opt-in/out preferences.
+
+**Schema changes (`prisma/schema.prisma`):**
+- Added `User.lastKnownIp String?` for new-device detection
+- Added `User.notifications Notification[]` and `Practice.notifications Notification[]` relations
+- Added `Practice.notificationPrefs Json?` for per-type opt-in/out storage
+- New `Notification` model: `id`, `practiceId`, `userId?`, `type`, `payload` (Json, no PHI), `sentAt`. Indexed on `[practiceId, type, sentAt(desc)]`.
+- New `NotificationType` enum: FAILED_LOGIN, NEW_DEVICE_LOGIN, NEW_USER_ADDED, ROLE_CHANGED, MFA_DISABLED, AR_THRESHOLD_30, AR_THRESHOLD_60, AR_THRESHOLD_90, HIGH_VALUE_CLAIM_UNPAID
+- **Migration needed:** `npx prisma migrate dev --name add-notifications`
+
+**Files created:**
+- **`lib/notifications/email.ts`** — Resend SDK wrapper. `sendEmail({ to, subject, practiceName, body, ctaLabel?, ctaUrl? })`. Full branded HTML template (violet #5B3FD4, DM Sans, responsive). Swallows errors — never crashes requests. Exports `APP_URL` from `NEXT_PUBLIC_APP_URL` env.
+- **`lib/notifications/send.ts`** — All trigger functions. `getAdminEmail(practiceId)` returns `{ email, practiceName, prefs }`. `isEnabled(prefs, type)` gates sends (missing key = enabled). `saveNotification()` deduplicates AR alerts by `claimId+type` before insert. Trigger functions: `notifyFailedLogins`, `notifyNewDeviceLogin`, `notifyNewUserAdded`, `notifyRoleChanged`, `notifyMfaDisabled`, `notifyArThreshold`. All respect `isEnabled` preference check.
+- **`app/api/cron/ar-alerts/route.ts`** — Protected by `Authorization: Bearer <CRON_SECRET>`. Queries all SUBMITTED/PENDING/APPEALING claims with `submittedAt` set. Decrypts `patientName` via `safeDecrypt()` before extracting initials. Fires 30/60/90-day thresholds and high-value ($500+) alerts. Returns `{ ok, claimsChecked, alertsSent }`.
+
+**Callers wired up:**
+- `app/api/auth/credentials-check/route.ts` — fires `notifyFailedLogins()` when ≥3 recent LOGIN+FAILURE audit entries for the email in last 10 min.
+- `app/api/auth/verify-mfa/route.ts` — fires `notifyNewDeviceLogin()` on IP change; updates `lastKnownIp` after every successful MFA verification.
+- `app/api/users/route.ts` — fires `notifyNewUserAdded()` after user creation.
+- `app/api/users/[id]/route.ts` — fires `notifyRoleChanged()` on role changes, `notifyMfaDisabled()` when `mfaEnabled` set to false.
+
+**Env vars to add to `.env.local`:**
+```
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=noreply@yourdomain.com
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+CRON_SECRET=<random secret>
+```
+
+---
+
+### 2026-04-01 — Notification Preferences UI
+
+Per-practice opt-in/out controls for all 9 notification types. Admin-only.
+
+- **`app/api/settings/notifications/route.ts`** (new) — `GET` returns `practice.notificationPrefs ?? {}`; `PATCH` merges provided keys. Both admin-only via `protect(req, ['ADMIN'])`.
+- **`components/settings/NotificationPreferencesCard.tsx`** (new) — Client component. 9 notification definitions grouped into Security / Team Activity / AR & Collections. Each row: icon, label, toggle switch (optimistic update + revert on failure), one-line summary, expandable detail panel. Missing keys treated as enabled (default on). Toggles PATCH `/api/settings/notifications`.
+- **`app/(dashboard)/settings/page.tsx`** — replaced stub card with `<NotificationPreferencesCard />` inside `{isAdmin && ...}`.
+
+---
+
+### 2026-04-19 — Header role-gating + pagination fix + migration fix + Vercel prep
+
+- **Header buttons role-gated** (`components/layout/Header.tsx`) — Bell (notifications) and User (practice) icon buttons now hidden for BILLER role; visible only for ADMIN, OFFICE_MANAGER, SUPER_ADMIN. Uses `useSession()` to read role from JWT.
+- **Seed fixed** (`prisma/seed.ts`) — demo@claimguard.ai now seeded as SUPER_ADMIN (was defaulting to ADMIN).
+- **Note:** After schema changes with no migration, Turbopack caches stale component — must `rm -rf .next` and restart to pick up Header changes.
+
+### 2026-04-19 — Pagination fix + migration fix + Vercel prep
+
+- **`listAppeals()` paginated** (`lib/db/appeals.ts`) — now accepts `limit`/`offset`, runs parallel count, returns `{ appeals, total }`. API route (`app/api/appeals/route.ts`) reads `?limit=` and `?offset=` from query string. Appeals page updated to destructure `data.appeals`.
+- **Missing `deletedAt` migration created** (`prisma/migrations/20260419000000_add_claim_soft_delete/`) — `deletedAt DateTime?` was in the schema but had no migration, causing seed to fail with `P2022`. Migration also adds `ProviderCredential` unique constraint.
+- **Vercel deployment prep** — `package.json` build script updated to `prisma generate && next build`. `vercel.json` created with nightly AR alerts cron (`0 2 * * *`).
+
+---
+
 ## Known State / To-Do
 
 - Database needs to be set up before the app will work: `docker run` for PostgreSQL → `npx prisma migrate deploy` → `npx prisma db seed`
 - `.env.local` needs a real `ANTHROPIC_API_KEY` for AI features to work
 - `ENCRYPTION_KEY` must be set in `.env.local` before seeding or creating any claims
-- No toast notifications wired up yet (sonner installed but not fully integrated)
+- **Pending migration:** Run `npx prisma migrate dev --name add-notifications` to apply Notification model, NotificationType enum, User.lastKnownIp, Practice.notificationPrefs
+- **Pending env vars:** Add `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` to `.env.local`
 - No mobile navigation component built yet (MobileNav.tsx stub not created)
 - Prisma 7 `prisma.config.ts` pattern used instead of classic `.env` datasource URL
 

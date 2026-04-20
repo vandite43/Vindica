@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateMfaCode } from '@/lib/auth/mfa';
-import { sendEmail } from '@/lib/email';
+import { sendMfaEmail } from '@/lib/notifications/email';
+import { isRateLimited } from '@/lib/auth/rate-limit';
 
 /**
  * POST /api/auth/send-mfa
@@ -11,6 +12,15 @@ import { sendEmail } from '@/lib/email';
  */
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
+      ?? req.headers.get('x-real-ip')
+      ?? 'unknown';
+
+    // 5 MFA send requests per IP per 10 minutes
+    if (isRateLimited(`send-mfa:${ip}`, 5, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+    }
+
     const { userId } = await req.json();
 
     if (!userId) {
@@ -19,7 +29,12 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true },
+      select: {
+        id:       true,
+        email:    true,
+        practice: { select: { name: true } },
+        memberOf: { select: { name: true } },
+      },
     });
 
     if (!user) {
@@ -28,20 +43,18 @@ export async function POST(req: NextRequest) {
 
     const code = await generateMfaCode(userId);
 
+    const overrideEmail = process.env.MFA_OVERRIDE_EMAIL;
     const deliveryEmail =
-      user.email === 'demo@claimguard.ai'
-        ? 'huseynaghayev61@gmail.com'
+      overrideEmail && user.email === 'demo@claimguard.ai'
+        ? overrideEmail
         : user.email;
 
-    await sendEmail({
-      to: deliveryEmail,
-      subject: 'Your Vindica verification code',
-      text: [
-        `Your verification code is: ${code}`,
-        '',
-        'This code expires in 10 minutes.',
-        'If you did not request this code, please contact your administrator.',
-      ].join('\n'),
+    const practiceName = user.practice?.name ?? user.memberOf?.name ?? 'Vyndico';
+
+    await sendMfaEmail({
+      to:   deliveryEmail,
+      code,
+      practiceName,
     });
 
     return NextResponse.json({ ok: true });

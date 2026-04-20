@@ -31,7 +31,7 @@ export default function AppealsPage() {
   useEffect(() => {
     fetch('/api/appeals')
       .then(r => r.json())
-      .then(data => { setAppeals(Array.isArray(data) ? data : []); setLoading(false); });
+      .then(data => { setAppeals(Array.isArray(data.appeals) ? data.appeals : []); setLoading(false); });
   }, []);
 
   const totalRecovered = appeals.reduce((sum, a) => sum + (a.amountRecovered || 0), 0);

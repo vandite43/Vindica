@@ -4,14 +4,23 @@ import { prisma } from '@/lib/db';
 import { protect } from '@/lib/auth/protect';
 import { writeAuditLog } from '@/lib/audit';
 import bcrypt from 'bcryptjs';
+import { z } from 'zod';
+import { notifyNewUserAdded } from '@/lib/notifications/send';
+
+const CreateUserSchema = z.object({
+  name:     z.string().max(100).optional(),
+  email:    z.string().email().max(254),
+  password: z.string().min(8).max(128),
+  role:     z.enum(['ADMIN', 'OFFICE_MANAGER', 'BILLER']),
+});
 
 async function getPractice(userId: string) {
-  return prisma.practice.findUnique({ where: { userId } });
+  return prisma.practice.findFirst({ where: { OR: [{ userId }, { members: { some: { id: userId } } }] } });
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const guard = await protect(req, ['ADMIN']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN']);
     if (guard) return guard;
 
     const session = await auth();
@@ -42,15 +51,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const guard = await protect(req, ['ADMIN']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN']);
     if (guard) return guard;
 
     const session = await auth();
-    const { name, email, password, role } = await req.json();
-
-    if (!email || !password || !role) {
-      return NextResponse.json({ error: 'Email, password, and role are required.' }, { status: 400 });
+    const body = await req.json().catch(() => null);
+    const parsed = CreateUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
     }
+    const { name, email, password, role } = parsed.data;
 
     const practice = await getPractice(session!.user.id);
     if (!practice) {
@@ -77,6 +87,8 @@ export async function POST(req: NextRequest) {
       outcome:   'SUCCESS',
       details:   `Created account for ${email} with role ${role}`,
     });
+
+    notifyNewUserAdded(practice.id, user.id, user.email, user.role, session!.user.email!).catch(() => {});
 
     return NextResponse.json(user, { status: 201 });
   } catch (error) {

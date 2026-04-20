@@ -7,12 +7,12 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  password      String?
-  role          Role      @default(BILLER)
-  isActive      Boolean   @default(true)
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  password       String?
+  role           Role      @default(BILLER)
+  isActive       Boolean   @default(true)
   mfaEnabled     Boolean   @default(true)
   mfaCode        String?
   mfaCodeExpiry  DateTime?
@@ -20,30 +20,50 @@ model User {
   mfaLockedUntil DateTime?
   mfaToken       String?
   mfaTokenExpiry DateTime?
+  lastKnownIp    String?   // for new-device login detection
   practice       Practice?
   practiceId     String?
   memberOf       Practice?  @relation("PracticeMembers", fields: [practiceId], references: [id])
   auditLogs      AuditLog[]
+  notifications  Notification[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+
+  @@index([practiceId])
 }
 
 model Practice {
-  id             String     @id @default(cuid())
+  id             String         @id @default(cuid())
   name           String
   npi            String?
-  npiType2       String?    // Organization NPI (Box 49)
-  taxId          String?    // EIN / Tax ID
+  npiType2       String?        // Organization NPI (Box 49)
+  taxId          String?        // EIN / Tax ID
   address        String?
-  billingAddress String?    // If different from address
+  billingAddress String?        // If different from address
   state          String?
-  userId         String     @unique
-  user           User       @relation(fields: [userId], references: [id])
-  members        User[]     @relation("PracticeMembers")
+  userId         String         @unique
+  user           User           @relation(fields: [userId], references: [id])
+  members        User[]         @relation("PracticeMembers")
   claims         Claim[]
   providers      Provider[]
   monthEndCloses MonthEndClose[]
-  createdAt      DateTime   @default(now())
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  notificationPrefs  Json?          // map of NotificationType → boolean; null = all enabled
+  createdAt          DateTime       @default(now())
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  practiceId String
+  practice   Practice         @relation(fields: [practiceId], references: [id])
+  userId     String?          // user the event is about (null for claim alerts)
+  user       User?            @relation(fields: [userId], references: [id])
+  type       NotificationType
+  payload    Json             // event-specific details (no PHI)
+  sentAt     DateTime         @default(now())
+
+  @@index([practiceId, type, sentAt(sort: Desc)])
 }
 
 model Claim {
@@ -78,9 +98,14 @@ model Claim {
   deniedAt          DateTime?
   denialReason      String?
   denialCode        String?
+  deletedAt         DateTime?     // null = active; set on soft-delete instead of hard-delete
   appeal            Appeal?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+
+  @@index([practiceId, status])
+  @@index([practiceId, serviceDate(sort: Desc)])
+  @@index([practiceId, createdAt(sort: Desc)])
 }
 
 model Appeal {
@@ -95,6 +120,8 @@ model Appeal {
   resolvedAt      DateTime?
   amountRecovered Float?
   updatedAt       DateTime      @updatedAt
+
+  @@index([status])
 }
 
 model Payer {
@@ -122,18 +149,35 @@ model AuditLog {
   resource    String       // e.g. "claim:clm_abc123" — no PHI
   outcome     AuditOutcome
   ipAddress   String?
+  userAgent   String?      // browser/device info
+  practiceId  String?      // null = system-level event
+  practice    Practice?    @relation(fields: [practiceId], references: [id])
   details     String?      // non-PHI context only
 
   @@index([timestamp(sort: Desc)])
   @@index([userEmail])
   @@index([action])
+  @@index([practiceId, timestamp(sort: Desc)])
+  @@index([userId, timestamp(sort: Desc)])
+}
+
+enum NotificationType {
+  FAILED_LOGIN
+  NEW_DEVICE_LOGIN
+  NEW_USER_ADDED
+  ROLE_CHANGED
+  MFA_DISABLED
+  AR_THRESHOLD_30
+  AR_THRESHOLD_60
+  AR_THRESHOLD_90
+  HIGH_VALUE_CLAIM_UNPAID
 }
 
 enum Role {
+  SUPER_ADMIN
   ADMIN
   OFFICE_MANAGER
   BILLER
-  PROVIDER
 }
 
 enum AuditAction {
@@ -144,6 +188,11 @@ enum AuditAction {
   DELETE
   UPDATE_USER_ROLE
   MONTH_END_CHECKLIST_ITEM
+  PHI_ACCESS
+  EXPORT
+  MFA_CHANGE
+  USER_CREATED
+  USER_DEACTIVATED
 }
 
 enum AuditOutcome {
@@ -206,6 +255,8 @@ model Provider {
   events        CredentialingEvent[]
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
+
+  @@index([practiceId])
 }
 
 model ProviderCredential {
@@ -223,6 +274,8 @@ model ProviderCredential {
   notes           String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+
+  @@unique([providerId, payerId])
 }
 
 model CredentialingEvent {
@@ -264,4 +317,25 @@ model MonthEndItem {
   updatedAt DateTime      @updatedAt
 
   @@unique([closeId, itemKey])
+}
+
+model SystemConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?  // email of last editor
+}
+
+model NationalBenchmark {
+  id          String   @id @default(cuid())
+  year        Int
+  quarter     Int      // 1–4
+  source      String   // e.g. "ADA Health Policy Institute", "NADP Annual Report"
+  data        Json     // quarterly snapshot — see API for shape
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([year, quarter])
+  @@index([year, quarter(sort: Desc)])
 }

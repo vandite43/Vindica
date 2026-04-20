@@ -1,7 +1,7 @@
-import Header from '@/components/layout/Header';
+﻿import Header from '@/components/layout/Header';
 import CredentialingClient from '@/components/credentialing/CredentialingClient';
 
-export const metadata = { title: 'Credentialing Tracker — Vindica' };
+export const metadata = { title: 'Credentialing Tracker — Vyndico' };
 
 export default function CredentialingPage() {
   return (

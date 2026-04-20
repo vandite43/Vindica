@@ -11,8 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Copy, Download, RefreshCw, Send, ArrowLeft, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import { getStoredModel } from '@/lib/hooks/useAIModel';
-
 interface Appeal {
   id: string;
   letterContent: string;
@@ -45,8 +43,7 @@ export default function AppealDetailPage({ params }: { params: Promise<{ id: str
   const [resolutionModal, setResolutionModal] = useState(false);
   const [resolution, setResolution] = useState({ outcome: 'WON', amountRecovered: '' });
   const [copied, setCopied] = useState(false);
-  const selectedModel = getStoredModel();
-
+  const [resolutionError, setResolutionError] = useState('');
   useEffect(() => {
     fetchAppeal();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,7 +64,7 @@ export default function AppealDetailPage({ params }: { params: Promise<{ id: str
     const res = await fetch(`/api/appeals/${id}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: selectedModel }),
+      body: JSON.stringify({}),
     });
     if (res.ok) {
       const data = await res.json();
@@ -87,6 +84,7 @@ export default function AppealDetailPage({ params }: { params: Promise<{ id: str
   }
 
   async function recordResolution() {
+    setResolutionError('');
     const res = await fetch(`/api/appeals/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -100,6 +98,9 @@ export default function AppealDetailPage({ params }: { params: Promise<{ id: str
     if (res.ok) {
       setResolutionModal(false);
       fetchAppeal();
+    } else {
+      const body = await res.json().catch(() => ({}));
+      setResolutionError(body.error || 'Failed to record resolution. Please try again.');
     }
   }
 
@@ -112,10 +113,15 @@ export default function AppealDetailPage({ params }: { params: Promise<{ id: str
   function downloadPDF() {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
+      const escHtml = (s: string) =>
+        s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+         .replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+      const safeTitle   = escHtml(appeal?.claim.patientName ?? '');
+      const safeContent = escHtml(letterContent).replace(/\n/g, '<br/>');
       printWindow.document.write(
-        `<html><head><title>Appeal Letter - ${appeal?.claim.patientName}</title>` +
+        `<html><head><title>Appeal Letter - ${safeTitle}</title>` +
         `<style>body{font-family:serif;max-width:700px;margin:40px auto;line-height:1.6;white-space:pre-wrap;font-size:14px;}</style>` +
-        `</head><body>${letterContent.replace(/\n/g, '<br/>')}</body></html>`
+        `</head><body>${safeContent}</body></html>`
       );
       printWindow.document.close();
       printWindow.print();
@@ -289,8 +295,11 @@ export default function AppealDetailPage({ params }: { params: Promise<{ id: str
               </div>
             )}
           </div>
+          {resolutionError && (
+            <p className="text-sm text-red-600 mt-1">{resolutionError}</p>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setResolutionModal(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setResolutionModal(false); setResolutionError(''); }}>Cancel</Button>
             <Button onClick={recordResolution} className="bg-[#0F4C81] hover:bg-[#1E6BB8]">
               Save Resolution
             </Button>

@@ -1,7 +1,7 @@
-import Header from '@/components/layout/Header';
+﻿import Header from '@/components/layout/Header';
 import MonthEndClient from '@/components/month-end/MonthEndClient';
 
-export const metadata = { title: 'Month End Close — Vindica' };
+export const metadata = { title: 'Month End Close — Vyndico' };
 
 export default function MonthEndPage() {
   return (

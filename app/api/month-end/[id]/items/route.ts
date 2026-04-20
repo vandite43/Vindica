@@ -3,23 +3,39 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { protect } from '@/lib/auth/protect';
 import { writeAuditLog } from '@/lib/audit';
+import { z } from 'zod';
+
+const ItemSchema = z.object({
+  itemKey: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_\-]+$/, 'Invalid itemKey format'),
+  checked: z.boolean(),
+  phase:   z.number().int().optional(),
+});
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER']);
     if (guard) return guard;
 
     const session = await auth();
     const { id } = await params;
-    const { itemKey, checked, phase } = await req.json();
+    const body = await req.json().catch(() => null);
+    const parsed = ItemSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
+    }
+    const { itemKey, checked, phase } = parsed.data;
 
-    const close = await prisma.monthEndClose.findUnique({
-      where: { id },
+    const practice = await prisma.practice.findFirst({
+      where: { OR: [{ userId: session!.user.id }, { members: { some: { id: session!.user.id } } }] },
+      select: { id: true },
     });
-    if (!close) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const close = await prisma.monthEndClose.findUnique({ where: { id } });
+    if (!close || !practice || close.practiceId !== practice.id) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
 
     const item = await prisma.monthEndItem.upsert({
       where: { closeId_itemKey: { closeId: id, itemKey } },
@@ -30,7 +46,7 @@ export async function PUT(
       },
       create: {
         closeId: id,
-        phase,
+        phase: phase ?? 0,
         itemKey,
         checked,
         checkedBy: checked ? session!.user.email : null,

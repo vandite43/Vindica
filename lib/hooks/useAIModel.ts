@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 import { useState, useEffect } from 'react';
 import { DEFAULT_AI_MODEL } from '@/lib/constants';
 
-const STORAGE_KEY = 'vindica_ai_model';
+const STORAGE_KEY = 'Vyndico_ai_model';
 
 export function useAIModel() {
   const [model, setModelState] = useState<string>(DEFAULT_AI_MODEL);

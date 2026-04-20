@@ -1,9 +1,9 @@
-import Header from '@/components/layout/Header';
+﻿import Header from '@/components/layout/Header';
 import ClaimsTabs from '@/components/claims/ClaimsTabs';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
-export const metadata = { title: 'Claims — Vindica' };
+export const metadata = { title: 'Claims — Vyndico' };
 
 const KNOWN_PAYERS = [
   'Delta Dental', 'Cigna', 'Aetna', 'MetLife',
@@ -41,7 +41,7 @@ async function getARQueueClaims(practiceId: string) {
 
 export default async function ClaimsPage() {
   const session = await auth();
-  const isDemoUser = session?.user?.email === 'demo@vindica.ai';
+  const isDemoUser = session?.user?.email === 'demo@Vyndico.ai';
 
   type ARClaim = {
     id: string;

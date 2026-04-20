@@ -23,7 +23,7 @@ import {
 import { format } from 'date-fns';
 import { UserPlus } from 'lucide-react';
 
-type Role = 'ADMIN' | 'OFFICE_MANAGER' | 'BILLER' | 'PROVIDER';
+type Role = 'ADMIN' | 'OFFICE_MANAGER' | 'BILLER';
 
 interface UserRow {
   id:        string;
@@ -38,16 +38,14 @@ const roleBadgeClass: Record<Role, string> = {
   ADMIN:          'bg-purple-100 text-purple-700',
   OFFICE_MANAGER: 'bg-blue-100 text-blue-700',
   BILLER:         'bg-green-100 text-green-700',
-  PROVIDER:       'bg-amber-100 text-amber-700',
 };
 
-const ROLES: Role[] = ['ADMIN', 'OFFICE_MANAGER', 'BILLER', 'PROVIDER'];
+const ROLES: Role[] = ['ADMIN', 'OFFICE_MANAGER', 'BILLER'];
 
 const ROLE_LABELS: Record<Role, string> = {
   ADMIN:          'Admin',
   OFFICE_MANAGER: 'Office Manager',
   BILLER:         'Biller',
-  PROVIDER:       'Provider',
 };
 
 const emptyCreate = { name: '', email: '', password: '', role: 'BILLER' as Role };
@@ -303,7 +301,7 @@ export default function UserManagement({ currentUserId }: { currentUserId: strin
                           {r === 'ADMIN'          && '— Full access'}
                           {r === 'OFFICE_MANAGER' && '— Reports + claims'}
                           {r === 'BILLER'         && '— Create & edit claims'}
-                          {r === 'PROVIDER'       && '— Read-only patient view'}
+
                         </span>
                       </div>
                     </SelectItem>

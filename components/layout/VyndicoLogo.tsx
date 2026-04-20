@@ -1,13 +1,13 @@
-import { VindicaMark } from './VindicaMark';
+﻿import { VyndicoMark } from './VyndicoMark';
 
-export function VindicaLogo() {
+export function VyndicoLogo() {
   return (
     <div className="flex flex-col items-center gap-3">
-      <VindicaMark size={80} />
+      <VyndicoMark size={80} />
       <div className="text-center">
         <h1 style={{ fontFamily: 'Trebuchet MS, Segoe UI, sans-serif' }}
             className="text-5xl font-bold tracking-tight text-midnight">
-          Vindi<span className="text-primary">ca</span>
+          Vyndi<span className="text-primary">co</span>
         </h1>
         <p className="text-xs tracking-[0.3em] text-primary/55 mt-1">
           INTELLIGENT CLAIMS RECOVERY

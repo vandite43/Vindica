@@ -1,7 +1,7 @@
-import Header from '@/components/layout/Header';
+﻿import Header from '@/components/layout/Header';
 import PayerIntelClient from '@/components/payer-intel/PayerIntelClient';
 
-export const metadata = { title: 'Payer Intelligence Center — Vindica' };
+export const metadata = { title: 'Payer Intelligence Center — Vyndico' };
 
 export default function PayerCenterPage() {
   return (

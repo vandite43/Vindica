@@ -4,7 +4,7 @@ import { protect } from '@/lib/auth/protect';
 
 export async function GET(req: NextRequest) {
   try {
-    const guard = await protect(req, ['ADMIN']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN']);
     if (guard) return guard;
 
     const { searchParams } = new URL(req.url);

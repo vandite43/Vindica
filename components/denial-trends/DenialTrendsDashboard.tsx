@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import NationalBenchmarksView, { type NationalApiResponse } from './NationalBenchmarksView';
+import { cn } from '@/lib/utils';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -113,12 +115,15 @@ function computeDates(range: RangeKey, customStart: string, customEnd: string): 
 
 export default function DenialTrendsDashboard() {
   const router = useRouter();
+  const [view, setView]               = useState<'practice' | 'national'>('practice');
   const [range, setRange]             = useState<RangeKey>('1m');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd]     = useState('');
   const [data, setData]               = useState<DenialAnalyticsResponse | null>(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
+  const [nationalData, setNationalData]       = useState<NationalApiResponse | null>(null);
+  const [nationalLoading, setNationalLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     const { startDate, endDate } = computeDates(range, customStart, customEnd);
@@ -143,11 +148,53 @@ export default function DenialTrendsDashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  useEffect(() => {
+    if (view === 'national' && !nationalData && !nationalLoading) {
+      setNationalLoading(true);
+      fetch('/api/analytics/national')
+        .then(r => r.json())
+        .then(setNationalData)
+        .catch(() => {})
+        .finally(() => setNationalLoading(false));
+    }
+  }, [view, nationalData, nationalLoading]);
+
   const trendUp   = data && data.overallDenialRate > data.previousDenialRate;
   const trendDown = data && data.overallDenialRate < data.previousDenialRate;
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
+
+      {/* ── View toggle ──────────────────────────────────────────────────── */}
+      <div className="flex bg-gray-100 rounded-lg p-1 w-fit">
+        <button
+          className={cn(
+            'px-5 py-1.5 rounded-md text-sm font-medium transition-all',
+            view === 'practice' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700',
+          )}
+          onClick={() => setView('practice')}
+        >
+          My Practice
+        </button>
+        <button
+          className={cn(
+            'px-5 py-1.5 rounded-md text-sm font-medium transition-all',
+            view === 'national' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700',
+          )}
+          onClick={() => setView('national')}
+        >
+          National Benchmarks
+        </button>
+      </div>
+
+      {/* ── National view ────────────────────────────────────────────────── */}
+      {view === 'national' && (
+        <NationalBenchmarksView data={nationalData} loading={nationalLoading} />
+      )}
+
+      {/* ── Practice view ────────────────────────────────────────────────── */}
+      {view === 'practice' && (
+      <>
 
       {/* Sample data banner */}
       {data?.isSampleData && (
@@ -554,6 +601,9 @@ export default function DenialTrendsDashboard() {
           </>
         )}
       </div>
+
+      </> /* end practice view */
+      )}
 
     </div>
   );

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { protect } from '@/lib/auth/protect';
 import { getClaimById, updateClaim, deleteClaim } from '@/lib/db/claims';
 
@@ -12,7 +13,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const claim = await getClaimById(id);
 
     if (!claim) return NextResponse.json({ error: 'Claim not found' }, { status: 404 });
-    if (claim.practice?.userId !== session.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    const practice = await prisma.practice.findFirst({
+      where: { OR: [{ userId: session.user.id }, { members: { some: { id: session.user.id } } }] },
+      select: { id: true },
+    });
+    if (!practice || claim.practiceId !== practice.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     return NextResponse.json(claim);
   } catch (error) {
@@ -23,15 +31,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER', 'BILLER']);
+    if (guard) return guard;
 
+    const session = await auth();
     const { id } = await params;
 
-    // Ownership check
     const existing = await getClaimById(id);
     if (!existing) return NextResponse.json({ error: 'Claim not found' }, { status: 404 });
-    if (existing.practice?.userId !== session.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    // Ownership check — supports both owner and member accounts
+    const practice = await prisma.practice.findFirst({
+      where: { OR: [{ userId: session!.user.id }, { members: { some: { id: session!.user.id } } }] },
+      select: { id: true },
+    });
+    if (!practice || existing.practiceId !== practice.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const body = await req.json();
 
@@ -64,19 +80,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json(updated);
   } catch (error) {
     console.error('PATCH /claims error:', error);
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const guard = await protect(req, ['ADMIN']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN']);
     if (guard) return guard;
 
+    const session = await auth();
     const { id } = await params;
-    await deleteClaim(id);
 
+    const claim = await getClaimById(id);
+    if (!claim) return NextResponse.json({ error: 'Claim not found' }, { status: 404 });
+
+    // Verify claim belongs to the user's practice
+    const practice = await prisma.practice.findFirst({
+      where: { OR: [{ userId: session!.user.id }, { members: { some: { id: session!.user.id } } }] },
+      select: { id: true },
+    });
+    if (!practice || claim.practiceId !== practice.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await deleteClaim(id);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('DELETE /claims error:', error);

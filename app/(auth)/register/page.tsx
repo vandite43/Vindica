@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { VindicaMark } from '@/components/layout/VindicaMark';
+import { VyndicoMark } from '@/components/layout/VyndicoMark';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -37,12 +37,12 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md shadow-xl" style={{ backgroundColor: '#F8F7FF' }}>
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
-            <VindicaMark size={56} />
+            <VyndicoMark size={56} />
           </div>
           <CardTitle className="text-2xl font-bold" style={{ fontFamily: 'Trebuchet MS, Segoe UI, sans-serif', color: '#1A1033' }}>
             Create Account
           </CardTitle>
-          <CardDescription>Set up your practice on Vindica</CardDescription>
+          <CardDescription>Set up your practice on Vyndico</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

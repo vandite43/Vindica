@@ -12,7 +12,7 @@ import { STATUS_COLORS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Brain, RefreshCw, AlertTriangle, CheckCircle, XCircle, FileText, ChevronDown, ChevronUp, Pencil, ClipboardCheck } from 'lucide-react';
 import type { ClaimAnalysis, RiskFactor } from '@/types';
-import { getStoredModel } from '@/lib/hooks/useAIModel';
+import { toast } from 'sonner';
 
 interface Claim {
   id: string;
@@ -135,11 +135,21 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
   const [analyzing, setAnalyzing] = useState(false);
   const [denialModal, setDenialModal] = useState<DenialModalState>({ open: false, reason: '', code: '' });
   const [updating, setUpdating] = useState(false);
-  const selectedModel = getStoredModel();
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchClaim() {
+      setLoading(true);
+      const res = await fetch(`/api/claims/${id}`);
+      if (!cancelled && res.ok) {
+        const data = await res.json();
+        setClaim(data);
+      }
+      if (!cancelled) setLoading(false);
+    }
+
     fetchClaim();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { cancelled = true; };
   }, [id]);
 
   async function fetchClaim() {
@@ -157,11 +167,14 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
     const res = await fetch(`/api/claims/${id}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: selectedModel }),
+      body: JSON.stringify({}),
     });
     if (res.ok) {
       const data = await res.json();
       setClaim(prev => prev ? { ...prev, ...data.claim, aiAnalysis: data.analysis } : null);
+    } else {
+      const body = await res.json().catch(() => ({}));
+      toast.error(body.error ?? 'AI analysis failed. Check your API key and try again.');
     }
     setAnalyzing(false);
   }

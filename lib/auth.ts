@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { writeAuditLog } from './audit';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   session: { strategy: 'jwt', maxAge: 900 },
   pages: {
     signIn: '/login',
@@ -112,6 +113,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           select: { role: true },
         });
         token.role = dbUser?.role ?? 'BILLER';
+      }
+      // Extended sessions for demo accounts — capped at 24 hours.
+      // Only active when DEMO_ACCOUNT_EMAILS is explicitly set (never in production by default).
+      const demoEmails = process.env.DEMO_ACCOUNT_EMAILS
+        ? process.env.DEMO_ACCOUNT_EMAILS.split(',').map(e => e.trim()).filter(Boolean)
+        : [];
+      if (demoEmails.length > 0 && demoEmails.includes(token.email as string)) {
+        token.exp = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24 hours
       }
       return token;
     },

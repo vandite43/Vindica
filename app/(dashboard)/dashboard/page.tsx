@@ -8,11 +8,22 @@ import { listClaims } from '@/lib/db/claims';
 export const dynamic = 'force-dynamic';
 
 async function getDashboardData(userId: string) {
-  const practice = await prisma.practice.findUnique({ where: { userId } });
+  // Owner account: Practice.userId === userId
+  // Member accounts: User.practiceId → Practice.id
+  let practice = await prisma.practice.findUnique({ where: { userId } });
+  if (!practice) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { practiceId: true },
+    });
+    if (user?.practiceId) {
+      practice = await prisma.practice.findUnique({ where: { id: user.practiceId } });
+    }
+  }
   if (!practice) return null;
 
-  const [claims, appeals] = await Promise.all([
-    listClaims(practice.id, {}),
+  const [{ claims }, appeals] = await Promise.all([
+    listClaims(practice.id, {}, { limit: 100, offset: 0 }),
     prisma.appeal.findMany({
       where: { claim: { practiceId: practice.id } },
     }),

@@ -1,7 +1,7 @@
-import Header from '@/components/layout/Header';
+﻿import Header from '@/components/layout/Header';
 import ROICalculatorClient from '@/components/roi-calculator/ROICalculatorClient';
 
-export const metadata = { title: 'Appeal ROI Calculator — Vindica' };
+export const metadata = { title: 'Appeal ROI Calculator — Vyndico' };
 
 export default function ROICalculatorPage() {
   return (

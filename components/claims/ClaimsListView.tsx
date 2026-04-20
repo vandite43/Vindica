@@ -41,7 +41,9 @@ export default function ClaimsListView() {
     if (riskFilter !== 'ALL') params.set('riskLevel', riskFilter);
     const res = await fetch('/api/claims?' + params.toString());
     const data = await res.json();
-    setClaims(Array.isArray(data) ? data : []);
+    // API returns { claims: [...], total: N }
+    const list = Array.isArray(data) ? data : (Array.isArray(data?.claims) ? data.claims : []);
+    setClaims(list);
     setLoading(false);
   }
 

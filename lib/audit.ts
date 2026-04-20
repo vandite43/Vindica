@@ -1,6 +1,6 @@
 import { prisma } from './db';
 
-export type AuditAction = 'LOGIN' | 'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE' | 'UPDATE_USER_ROLE' | 'MONTH_END_CHECKLIST_ITEM';
+export type AuditAction = 'LOGIN' | 'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE' | 'UPDATE_USER_ROLE' | 'MONTH_END_CHECKLIST_ITEM' | 'PHI_ACCESS' | 'EXPORT' | 'MFA_CHANGE' | 'USER_CREATED' | 'USER_DEACTIVATED';
 export type AuditOutcome = 'SUCCESS' | 'FAILURE';
 
 interface WriteAuditLogParams {
@@ -11,6 +11,9 @@ interface WriteAuditLogParams {
   resource: string;
   outcome: AuditOutcome;
   ipAddress?: string;
+  userAgent?: string;
+  /** Practice the event belongs to — omit for system-level events */
+  practiceId?: string;
   /** Non-PHI context only, e.g. "status changed to DENIED" */
   details?: string;
 }

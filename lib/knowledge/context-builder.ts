@@ -95,6 +95,8 @@ function buildCdtSection(cdtCodes: string[]): string {
 }
 
 function buildPayerSection(payerId: string, cdtCodes: string[]): string {
+  // Validate payerId is a known safe key before using it for object lookup
+  if (!payerId || typeof payerId !== 'string' || !/^[A-Z0-9_\-]{1,50}$/i.test(payerId)) return '';
   const policy = PAYER_POLICIES[payerId];
   if (!policy) return '';
 

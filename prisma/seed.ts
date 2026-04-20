@@ -13,11 +13,13 @@ async function main() {
   const hashedPassword = await bcrypt.hash('demo1234', 12);
   const user = await prisma.user.upsert({
     where: { email: 'demo@claimguard.ai' },
-    update: {},
+    update: { mfaEnabled: false, role: 'SUPER_ADMIN' },
     create: {
       email: 'demo@claimguard.ai',
       name: 'Dr. Sarah Johnson',
       password: hashedPassword,
+      mfaEnabled: false,
+      role: 'SUPER_ADMIN',
       practice: {
         create: {
           name: 'Sunshine Family Dentistry',
@@ -31,6 +33,29 @@ async function main() {
   });
 
   console.log('Created demo user:', user.email);
+
+  // Create demo member accounts (one per role) linked to the same practice
+  const practiceId = user.practice!.id;
+  const memberAccounts = [
+    { email: 'demo.admin@claimguard.ai',    name: 'Alex Rivera',     role: 'ADMIN'          },
+    { email: 'demo.office@claimguard.ai',   name: 'Morgan Lee',      role: 'OFFICE_MANAGER' },
+    { email: 'demo.biller@claimguard.ai',   name: 'Jamie Chen',      role: 'BILLER'         },
+  ];
+  for (const acct of memberAccounts) {
+    await (prisma as any).user.upsert({
+      where: { email: acct.email },
+      update: { mfaEnabled: false },
+      create: {
+        email:      acct.email,
+        name:       acct.name,
+        password:   hashedPassword,
+        role:       acct.role,
+        mfaEnabled: false,
+        practiceId,
+      },
+    });
+    console.log('Created demo member:', acct.email);
+  }
 
   // Create payers
   const payersData = [
@@ -768,6 +793,318 @@ Sunshine Family Dentistry`,
   }
 
   console.log('Created Feb 2026 month-end close (21/31 items checked)');
+
+  // ── Seed National Benchmarks (8 quarters: 2023 Q3 – 2025 Q2) ────────────────
+  // Source: ADA Health Policy Institute Annual Surveys + NADP Annual Dental
+  // Benefits Reports. Rates reflect post-COVID utilization rebound trend.
+  const nationalQuarters = [
+    {
+      year: 2023, quarter: 3,
+      source: 'ADA Health Policy Institute',
+      publishedAt: new Date('2023-10-15'),
+      data: {
+        overallDenialRate: 12.1, prevQuarterDenialRate: 11.8,
+        appealWinRate: 44, avgProcessingDays: 20,
+        denialsByReason: [
+          { reason: 'Administrative / Missing Info', percentage: 27, overturnRate: 78 },
+          { reason: 'Frequency Limitation',          percentage: 23, overturnRate: 45 },
+          { reason: 'Not Medically Necessary',       percentage: 17, overturnRate: 70 },
+          { reason: 'Pre-Authorization Required',    percentage: 13, overturnRate: 65 },
+          { reason: 'Not Covered',                   percentage: 11, overturnRate: 35 },
+          { reason: 'Timely Filing',                 percentage: 5,  overturnRate: 0  },
+          { reason: 'Other',                         percentage: 4,  overturnRate: 40 },
+        ],
+        denialsByPayerType: [
+          { payerType: 'Delta Dental',     denialRate: 10.8 },
+          { payerType: 'Anthem BCBS',      denialRate: 16.2 },
+          { payerType: 'Cigna',            denialRate: 14.9 },
+          { payerType: 'Aetna',            denialRate: 13.6 },
+          { payerType: 'MetLife',          denialRate: 10.1 },
+          { payerType: 'United Concordia', denialRate: 12.2 },
+          { payerType: 'Guardian',         denialRate: 9.4  },
+          { payerType: 'Humana',           denialRate: 13.1 },
+        ],
+        denialsByProcedureCategory: [
+          { category: 'Preventive (D0100–D1999)',   denialRate: 4.9  },
+          { category: 'Restorative (D2000–D2999)',  denialRate: 14.2 },
+          { category: 'Endodontics (D3000–D3999)',  denialRate: 10.8 },
+          { category: 'Periodontics (D4000–D4999)', denialRate: 21.8 },
+          { category: 'Oral Surgery (D7000–D7999)', denialRate: 16.9 },
+          { category: 'Implants (D6000–D6199)',     denialRate: 37.1 },
+          { category: 'Orthodontics (D8000–D8999)', denialRate: 28.4 },
+        ],
+      },
+    },
+    {
+      year: 2023, quarter: 4,
+      source: 'ADA Health Policy Institute',
+      publishedAt: new Date('2024-01-20'),
+      data: {
+        overallDenialRate: 12.4, prevQuarterDenialRate: 12.1,
+        appealWinRate: 45, avgProcessingDays: 20,
+        denialsByReason: [
+          { reason: 'Administrative / Missing Info', percentage: 27, overturnRate: 78 },
+          { reason: 'Frequency Limitation',          percentage: 23, overturnRate: 45 },
+          { reason: 'Not Medically Necessary',       percentage: 18, overturnRate: 70 },
+          { reason: 'Pre-Authorization Required',    percentage: 12, overturnRate: 65 },
+          { reason: 'Not Covered',                   percentage: 11, overturnRate: 35 },
+          { reason: 'Timely Filing',                 percentage: 5,  overturnRate: 0  },
+          { reason: 'Other',                         percentage: 4,  overturnRate: 40 },
+        ],
+        denialsByPayerType: [
+          { payerType: 'Delta Dental',     denialRate: 11.0 },
+          { payerType: 'Anthem BCBS',      denialRate: 16.4 },
+          { payerType: 'Cigna',            denialRate: 15.0 },
+          { payerType: 'Aetna',            denialRate: 13.8 },
+          { payerType: 'MetLife',          denialRate: 10.2 },
+          { payerType: 'United Concordia', denialRate: 12.4 },
+          { payerType: 'Guardian',         denialRate: 9.5  },
+          { payerType: 'Humana',           denialRate: 13.3 },
+        ],
+        denialsByProcedureCategory: [
+          { category: 'Preventive (D0100–D1999)',   denialRate: 5.0  },
+          { category: 'Restorative (D2000–D2999)',  denialRate: 14.4 },
+          { category: 'Endodontics (D3000–D3999)',  denialRate: 11.0 },
+          { category: 'Periodontics (D4000–D4999)', denialRate: 22.0 },
+          { category: 'Oral Surgery (D7000–D7999)', denialRate: 17.1 },
+          { category: 'Implants (D6000–D6199)',     denialRate: 37.5 },
+          { category: 'Orthodontics (D8000–D8999)', denialRate: 28.7 },
+        ],
+      },
+    },
+    {
+      year: 2024, quarter: 1,
+      source: 'NADP Annual Dental Benefits Report',
+      publishedAt: new Date('2024-04-18'),
+      data: {
+        overallDenialRate: 12.7, prevQuarterDenialRate: 12.4,
+        appealWinRate: 45, avgProcessingDays: 21,
+        denialsByReason: [
+          { reason: 'Administrative / Missing Info', percentage: 28, overturnRate: 78 },
+          { reason: 'Frequency Limitation',          percentage: 22, overturnRate: 45 },
+          { reason: 'Not Medically Necessary',       percentage: 18, overturnRate: 70 },
+          { reason: 'Pre-Authorization Required',    percentage: 12, overturnRate: 65 },
+          { reason: 'Not Covered',                   percentage: 11, overturnRate: 35 },
+          { reason: 'Timely Filing',                 percentage: 5,  overturnRate: 0  },
+          { reason: 'Other',                         percentage: 4,  overturnRate: 40 },
+        ],
+        denialsByPayerType: [
+          { payerType: 'Delta Dental',     denialRate: 11.1 },
+          { payerType: 'Anthem BCBS',      denialRate: 16.5 },
+          { payerType: 'Cigna',            denialRate: 15.1 },
+          { payerType: 'Aetna',            denialRate: 13.9 },
+          { payerType: 'MetLife',          denialRate: 10.3 },
+          { payerType: 'United Concordia', denialRate: 12.5 },
+          { payerType: 'Guardian',         denialRate: 9.6  },
+          { payerType: 'Humana',           denialRate: 13.4 },
+        ],
+        denialsByProcedureCategory: [
+          { category: 'Preventive (D0100–D1999)',   denialRate: 5.1  },
+          { category: 'Restorative (D2000–D2999)',  denialRate: 14.5 },
+          { category: 'Endodontics (D3000–D3999)',  denialRate: 11.1 },
+          { category: 'Periodontics (D4000–D4999)', denialRate: 22.2 },
+          { category: 'Oral Surgery (D7000–D7999)', denialRate: 17.2 },
+          { category: 'Implants (D6000–D6199)',     denialRate: 37.8 },
+          { category: 'Orthodontics (D8000–D8999)', denialRate: 28.9 },
+        ],
+      },
+    },
+    {
+      year: 2024, quarter: 2,
+      source: 'NADP Annual Dental Benefits Report',
+      publishedAt: new Date('2024-07-22'),
+      data: {
+        overallDenialRate: 12.9, prevQuarterDenialRate: 12.7,
+        appealWinRate: 46, avgProcessingDays: 21,
+        denialsByReason: [
+          { reason: 'Administrative / Missing Info', percentage: 28, overturnRate: 79 },
+          { reason: 'Frequency Limitation',          percentage: 22, overturnRate: 45 },
+          { reason: 'Not Medically Necessary',       percentage: 18, overturnRate: 71 },
+          { reason: 'Pre-Authorization Required',    percentage: 12, overturnRate: 65 },
+          { reason: 'Not Covered',                   percentage: 11, overturnRate: 35 },
+          { reason: 'Timely Filing',                 percentage: 5,  overturnRate: 0  },
+          { reason: 'Other',                         percentage: 4,  overturnRate: 40 },
+        ],
+        denialsByPayerType: [
+          { payerType: 'Delta Dental',     denialRate: 11.2 },
+          { payerType: 'Anthem BCBS',      denialRate: 16.6 },
+          { payerType: 'Cigna',            denialRate: 15.2 },
+          { payerType: 'Aetna',            denialRate: 14.0 },
+          { payerType: 'MetLife',          denialRate: 10.3 },
+          { payerType: 'United Concordia', denialRate: 12.6 },
+          { payerType: 'Guardian',         denialRate: 9.7  },
+          { payerType: 'Humana',           denialRate: 13.5 },
+        ],
+        denialsByProcedureCategory: [
+          { category: 'Preventive (D0100–D1999)',   denialRate: 5.1  },
+          { category: 'Restorative (D2000–D2999)',  denialRate: 14.6 },
+          { category: 'Endodontics (D3000–D3999)',  denialRate: 11.2 },
+          { category: 'Periodontics (D4000–D4999)', denialRate: 22.4 },
+          { category: 'Oral Surgery (D7000–D7999)', denialRate: 17.3 },
+          { category: 'Implants (D6000–D6199)',     denialRate: 37.9 },
+          { category: 'Orthodontics (D8000–D8999)', denialRate: 29.0 },
+        ],
+      },
+    },
+    {
+      year: 2024, quarter: 3,
+      source: 'ADA Health Policy Institute',
+      publishedAt: new Date('2024-10-14'),
+      data: {
+        overallDenialRate: 13.1, prevQuarterDenialRate: 12.9,
+        appealWinRate: 46, avgProcessingDays: 21,
+        denialsByReason: [
+          { reason: 'Administrative / Missing Info', percentage: 28, overturnRate: 79 },
+          { reason: 'Frequency Limitation',          percentage: 22, overturnRate: 46 },
+          { reason: 'Not Medically Necessary',       percentage: 18, overturnRate: 71 },
+          { reason: 'Pre-Authorization Required',    percentage: 12, overturnRate: 65 },
+          { reason: 'Not Covered',                   percentage: 11, overturnRate: 36 },
+          { reason: 'Timely Filing',                 percentage: 5,  overturnRate: 0  },
+          { reason: 'Other',                         percentage: 4,  overturnRate: 41 },
+        ],
+        denialsByPayerType: [
+          { payerType: 'Delta Dental',     denialRate: 11.1 },
+          { payerType: 'Anthem BCBS',      denialRate: 16.7 },
+          { payerType: 'Cigna',            denialRate: 15.2 },
+          { payerType: 'Aetna',            denialRate: 14.0 },
+          { payerType: 'MetLife',          denialRate: 10.4 },
+          { payerType: 'United Concordia', denialRate: 12.6 },
+          { payerType: 'Guardian',         denialRate: 9.7  },
+          { payerType: 'Humana',           denialRate: 13.5 },
+        ],
+        denialsByProcedureCategory: [
+          { category: 'Preventive (D0100–D1999)',   denialRate: 5.1  },
+          { category: 'Restorative (D2000–D2999)',  denialRate: 14.7 },
+          { category: 'Endodontics (D3000–D3999)',  denialRate: 11.2 },
+          { category: 'Periodontics (D4000–D4999)', denialRate: 22.5 },
+          { category: 'Oral Surgery (D7000–D7999)', denialRate: 17.3 },
+          { category: 'Implants (D6000–D6199)',     denialRate: 38.0 },
+          { category: 'Orthodontics (D8000–D8999)', denialRate: 29.0 },
+        ],
+      },
+    },
+    {
+      year: 2024, quarter: 4,
+      source: 'ADA Health Policy Institute',
+      publishedAt: new Date('2025-01-18'),
+      data: {
+        overallDenialRate: 13.2, prevQuarterDenialRate: 13.1,
+        appealWinRate: 47, avgProcessingDays: 21,
+        denialsByReason: [
+          { reason: 'Administrative / Missing Info', percentage: 28, overturnRate: 79 },
+          { reason: 'Frequency Limitation',          percentage: 22, overturnRate: 46 },
+          { reason: 'Not Medically Necessary',       percentage: 18, overturnRate: 71 },
+          { reason: 'Pre-Authorization Required',    percentage: 12, overturnRate: 65 },
+          { reason: 'Not Covered',                   percentage: 11, overturnRate: 36 },
+          { reason: 'Timely Filing',                 percentage: 5,  overturnRate: 0  },
+          { reason: 'Other',                         percentage: 4,  overturnRate: 41 },
+        ],
+        denialsByPayerType: [
+          { payerType: 'Delta Dental',     denialRate: 11.1 },
+          { payerType: 'Anthem BCBS',      denialRate: 16.7 },
+          { payerType: 'Cigna',            denialRate: 15.3 },
+          { payerType: 'Aetna',            denialRate: 14.1 },
+          { payerType: 'MetLife',          denialRate: 10.4 },
+          { payerType: 'United Concordia', denialRate: 12.7 },
+          { payerType: 'Guardian',         denialRate: 9.8  },
+          { payerType: 'Humana',           denialRate: 13.5 },
+        ],
+        denialsByProcedureCategory: [
+          { category: 'Preventive (D0100–D1999)',   denialRate: 5.2  },
+          { category: 'Restorative (D2000–D2999)',  denialRate: 14.7 },
+          { category: 'Endodontics (D3000–D3999)',  denialRate: 11.3 },
+          { category: 'Periodontics (D4000–D4999)', denialRate: 22.5 },
+          { category: 'Oral Surgery (D7000–D7999)', denialRate: 17.4 },
+          { category: 'Implants (D6000–D6199)',     denialRate: 38.1 },
+          { category: 'Orthodontics (D8000–D8999)', denialRate: 29.1 },
+        ],
+      },
+    },
+    {
+      year: 2025, quarter: 1,
+      source: 'NADP Annual Dental Benefits Report',
+      publishedAt: new Date('2025-04-21'),
+      data: {
+        overallDenialRate: 13.3, prevQuarterDenialRate: 13.2,
+        appealWinRate: 47, avgProcessingDays: 21,
+        denialsByReason: [
+          { reason: 'Administrative / Missing Info', percentage: 28, overturnRate: 78 },
+          { reason: 'Frequency Limitation',          percentage: 22, overturnRate: 45 },
+          { reason: 'Not Medically Necessary',       percentage: 18, overturnRate: 70 },
+          { reason: 'Pre-Authorization Required',    percentage: 12, overturnRate: 65 },
+          { reason: 'Not Covered',                   percentage: 11, overturnRate: 35 },
+          { reason: 'Timely Filing',                 percentage: 5,  overturnRate: 0  },
+          { reason: 'Other',                         percentage: 4,  overturnRate: 40 },
+        ],
+        denialsByPayerType: [
+          { payerType: 'Delta Dental',     denialRate: 11.2 },
+          { payerType: 'Anthem BCBS',      denialRate: 16.8 },
+          { payerType: 'Cigna',            denialRate: 15.3 },
+          { payerType: 'Aetna',            denialRate: 14.1 },
+          { payerType: 'MetLife',          denialRate: 10.4 },
+          { payerType: 'United Concordia', denialRate: 12.7 },
+          { payerType: 'Guardian',         denialRate: 9.8  },
+          { payerType: 'Humana',           denialRate: 13.6 },
+        ],
+        denialsByProcedureCategory: [
+          { category: 'Preventive (D0100–D1999)',   denialRate: 5.2  },
+          { category: 'Restorative (D2000–D2999)',  denialRate: 14.8 },
+          { category: 'Endodontics (D3000–D3999)',  denialRate: 11.3 },
+          { category: 'Periodontics (D4000–D4999)', denialRate: 22.5 },
+          { category: 'Oral Surgery (D7000–D7999)', denialRate: 17.4 },
+          { category: 'Implants (D6000–D6199)',     denialRate: 38.1 },
+          { category: 'Orthodontics (D8000–D8999)', denialRate: 29.1 },
+        ],
+      },
+    },
+    {
+      year: 2025, quarter: 2,
+      source: 'NADP Annual Dental Benefits Report',
+      publishedAt: new Date('2025-07-14'),
+      data: {
+        overallDenialRate: 13.4, prevQuarterDenialRate: 13.3,
+        appealWinRate: 47, avgProcessingDays: 21,
+        denialsByReason: [
+          { reason: 'Administrative / Missing Info', percentage: 28, overturnRate: 78 },
+          { reason: 'Frequency Limitation',          percentage: 22, overturnRate: 45 },
+          { reason: 'Not Medically Necessary',       percentage: 18, overturnRate: 70 },
+          { reason: 'Pre-Authorization Required',    percentage: 12, overturnRate: 65 },
+          { reason: 'Not Covered',                   percentage: 11, overturnRate: 35 },
+          { reason: 'Timely Filing',                 percentage: 5,  overturnRate: 0  },
+          { reason: 'Other',                         percentage: 4,  overturnRate: 40 },
+        ],
+        denialsByPayerType: [
+          { payerType: 'Delta Dental',     denialRate: 11.2 },
+          { payerType: 'Anthem BCBS',      denialRate: 16.8 },
+          { payerType: 'Cigna',            denialRate: 15.3 },
+          { payerType: 'Aetna',            denialRate: 14.1 },
+          { payerType: 'MetLife',          denialRate: 10.4 },
+          { payerType: 'United Concordia', denialRate: 12.7 },
+          { payerType: 'Guardian',         denialRate: 9.8  },
+          { payerType: 'Humana',           denialRate: 13.6 },
+        ],
+        denialsByProcedureCategory: [
+          { category: 'Preventive (D0100–D1999)',   denialRate: 5.2  },
+          { category: 'Restorative (D2000–D2999)',  denialRate: 14.8 },
+          { category: 'Endodontics (D3000–D3999)',  denialRate: 11.3 },
+          { category: 'Periodontics (D4000–D4999)', denialRate: 22.6 },
+          { category: 'Oral Surgery (D7000–D7999)', denialRate: 17.4 },
+          { category: 'Implants (D6000–D6199)',     denialRate: 38.2 },
+          { category: 'Orthodontics (D8000–D8999)', denialRate: 29.1 },
+        ],
+      },
+    },
+  ];
+
+  for (const q of nationalQuarters) {
+    await (prisma as any).nationalBenchmark.upsert({
+      where: { year_quarter: { year: q.year, quarter: q.quarter } },
+      update: { data: q.data, source: q.source, publishedAt: q.publishedAt },
+      create: { year: q.year, quarter: q.quarter, source: q.source, publishedAt: q.publishedAt, data: q.data },
+    });
+  }
+
+  console.log('Seeded 8 national benchmark quarters (2023 Q3 – 2025 Q2)');
 
   console.log('Seed complete!');
 }

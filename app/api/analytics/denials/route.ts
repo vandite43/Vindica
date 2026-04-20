@@ -124,13 +124,13 @@ function buildSampleData() {
 
 export async function GET(req: NextRequest) {
   try {
-    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER']);
     if (guard) return guard;
 
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const practice = await prisma.practice.findUnique({ where: { userId: session.user.id } });
+    const practice = await prisma.practice.findFirst({ where: { OR: [{ userId: session.user.id }, { members: { some: { id: session.user.id } } }] } });
     if (!practice) return NextResponse.json({ error: 'Practice not found' }, { status: 404 });
 
     // Parse date range

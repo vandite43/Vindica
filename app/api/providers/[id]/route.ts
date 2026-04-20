@@ -3,29 +3,23 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { protect } from '@/lib/auth/protect';
 import { writeAuditLog } from '@/lib/audit';
+import { getProviderById, updateProvider, deactivateProvider } from '@/lib/db/providers';
 
 async function getPracticeId(userId: string) {
-  const practice = await prisma.practice.findUnique({ where: { userId } });
+  const practice = await prisma.practice.findFirst({ where: { OR: [{ userId }, { members: { some: { id: userId } } }] } });
   return practice?.id ?? null;
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER']);
     if (guard) return guard;
 
     const session = await auth();
     const practiceId = await getPracticeId(session!.user.id);
     const { id } = await params;
 
-    const provider = await prisma.provider.findUnique({
-      where: { id },
-      include: {
-        credentialing: { orderBy: { payerName: 'asc' } },
-        events: { orderBy: { createdAt: 'desc' } },
-      },
-    });
-
+    const provider = await getProviderById(id);
     if (!provider || provider.practiceId !== practiceId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
@@ -39,7 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER']);
     if (guard) return guard;
 
     const session = await auth();
@@ -55,22 +49,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { firstName, lastName, credentials, npiType1, licenseNumber, licenseState,
             licenseExpiry, deaNumber, specialty, startDate, active } = body;
 
-    const updated = await prisma.provider.update({
-      where: { id },
-      data: {
-        ...(firstName !== undefined && { firstName }),
-        ...(lastName !== undefined && { lastName }),
-        ...(credentials !== undefined && { credentials }),
-        ...(npiType1 !== undefined && { npiType1 }),
-        ...(licenseNumber !== undefined && { licenseNumber }),
-        ...(licenseState !== undefined && { licenseState }),
-        ...(licenseExpiry !== undefined && { licenseExpiry: new Date(licenseExpiry) }),
-        ...(deaNumber !== undefined && { deaNumber: deaNumber || null }),
-        ...(specialty !== undefined && { specialty }),
-        ...(startDate !== undefined && { startDate: new Date(startDate) }),
-        ...(active !== undefined && { active }),
-      },
-      include: { credentialing: true, events: { orderBy: { createdAt: 'desc' } } },
+    const updated = await updateProvider(id, {
+      ...(firstName !== undefined     && { firstName }),
+      ...(lastName !== undefined      && { lastName }),
+      ...(credentials !== undefined   && { credentials }),
+      ...(npiType1 !== undefined      && { npiType1 }),
+      ...(licenseNumber !== undefined && { licenseNumber }),
+      ...(licenseState !== undefined  && { licenseState }),
+      ...(licenseExpiry !== undefined && { licenseExpiry: new Date(licenseExpiry) }),
+      ...(deaNumber !== undefined     && { deaNumber: deaNumber || null }),
+      ...(specialty !== undefined     && { specialty }),
+      ...(startDate !== undefined     && { startDate: new Date(startDate) }),
+      ...(active !== undefined        && { active }),
     });
 
     await writeAuditLog({
@@ -90,7 +80,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER']);
     if (guard) return guard;
 
     const session = await auth();
@@ -102,7 +92,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    await prisma.provider.update({ where: { id }, data: { active: false } });
+    await deactivateProvider(id);
 
     await writeAuditLog({
       userId: session!.user.id,

@@ -12,10 +12,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { claimId } = body;
 
-    // Verify the claim belongs to this user (getClaimById includes practice.userId)
+    // Verify the claim belongs to the requesting user's practice (owner OR member)
     const claim = await getClaimById(claimId);
     if (!claim) return NextResponse.json({ error: 'Claim not found' }, { status: 404 });
-    if (claim.practice?.userId !== session.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const userPractice = await prisma.practice.findFirst({
+      where: { OR: [{ userId: session.user.id }, { members: { some: { id: session.user.id } } }] },
+      select: { id: true },
+    });
+    if (!userPractice || claim.practiceId !== userPractice.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Update claim status to APPEALING
     await prisma.claim.update({ where: { id: claimId }, data: { status: 'APPEALING' } });
@@ -39,16 +45,20 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const practice = await prisma.practice.findUnique({ where: { userId: session.user.id } });
+    const practice = await prisma.practice.findFirst({ where: { OR: [{ userId: session.user.id }, { members: { some: { id: session.user.id } } }] } });
     if (!practice) return NextResponse.json({ error: 'Practice not found' }, { status: 404 });
 
-    const appeals = await listAppeals(practice.id);
-    return NextResponse.json(appeals);
+    const { searchParams } = new URL(req.url);
+    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 100);
+    const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
+
+    const result = await listAppeals(practice.id, limit, offset);
+    return NextResponse.json(result);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -8,7 +8,7 @@ import {
   ClipboardCheck, BookOpen, LibraryBig, PenLine, TrendingDown, Calculator, ShieldCheck, CalendarCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { VindicaMark } from './VindicaMark';
+import { VyndicoMark } from './VyndicoMark';
 import type { Role } from '@/lib/auth/roles';
 
 type NavItem = {
@@ -18,22 +18,21 @@ type NavItem = {
   roles: Role[]; // empty array = all roles
 };
 
-const ALL_ROLES: Role[] = ['ADMIN', 'OFFICE_MANAGER', 'BILLER', 'PROVIDER'];
-const NON_PROVIDER: Role[] = ['ADMIN', 'OFFICE_MANAGER', 'BILLER'];
+const ALL_ROLES: Role[] = ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER', 'BILLER'];
 
 const navItems: NavItem[] = [
   { href: '/dashboard',         label: 'Dashboard',       icon: LayoutDashboard, roles: ALL_ROLES },
   { href: '/claims',            label: 'Claims',           icon: FileText,        roles: ALL_ROLES },
-  { href: '/appeals',           label: 'Appeals',          icon: Mail,            roles: NON_PROVIDER },
-  { href: '/narrative-builder', label: 'Narrative Builder',icon: PenLine,         roles: NON_PROVIDER },
-  { href: '/scrubber',          label: 'Claim Scrubber',   icon: ClipboardCheck,  roles: NON_PROVIDER },
-  { href: '/denial-decoder',    label: 'Denial Decoder',   icon: BookOpen,        roles: NON_PROVIDER },
-  { href: '/roi-calculator',    label: 'ROI Calculator',   icon: Calculator,      roles: NON_PROVIDER },
+  { href: '/appeals',           label: 'Appeals',          icon: Mail,            roles: ALL_ROLES },
+  { href: '/narrative-builder', label: 'Narrative Builder',icon: PenLine,         roles: ALL_ROLES },
+  { href: '/scrubber',          label: 'Claim Scrubber',   icon: ClipboardCheck,  roles: ALL_ROLES },
+  { href: '/denial-decoder',    label: 'Denial Decoder',   icon: BookOpen,        roles: ALL_ROLES },
+  { href: '/roi-calculator',    label: 'ROI Calculator',   icon: Calculator,      roles: ALL_ROLES },
   { href: '/credentialing',     label: 'Credentialing',    icon: ShieldCheck,     roles: ['ADMIN', 'OFFICE_MANAGER'] },
   { href: '/month-end',         label: 'Month End Close',  icon: CalendarCheck,   roles: ['ADMIN', 'OFFICE_MANAGER'] },
-  { href: '/denial-trends',     label: 'Denial Trends',    icon: TrendingDown,    roles: ['ADMIN', 'OFFICE_MANAGER'] },
-  { href: '/payer-center',      label: 'Payer Center',     icon: LibraryBig,      roles: NON_PROVIDER },
-  { href: '/settings',          label: 'Settings',         icon: Settings,        roles: ALL_ROLES },
+  { href: '/denial-trends',     label: 'Denial Trends',    icon: TrendingDown,    roles: ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER'] },
+  { href: '/payer-center',      label: 'Payer Center',     icon: LibraryBig,      roles: ALL_ROLES },
+  { href: '/settings',          label: 'Settings',         icon: Settings,        roles: ['SUPER_ADMIN', 'ADMIN'] },
 ];
 
 export default function Sidebar() {
@@ -49,11 +48,11 @@ export default function Sidebar() {
     <aside className="w-64 min-h-screen flex flex-col" style={{ backgroundColor: '#1A1033' }}>
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <VindicaMark size={32} variant="dark" />
+          <VyndicoMark size={32} variant="dark" />
           <div>
             <h1 className="font-bold text-lg leading-tight text-white"
                 style={{ fontFamily: 'Trebuchet MS, Segoe UI, sans-serif' }}>
-              Vindi<span style={{ color: '#8B72E8' }}>ca</span>
+              Vyndi<span style={{ color: '#8B72E8' }}>co</span>
             </h1>
             <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
               Intelligent Claims Recovery
@@ -85,7 +84,7 @@ export default function Sidebar() {
       </nav>
       <div className="p-4 border-t border-white/10">
         <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>
-          Vindica v1.0
+          Vyndico v1.0
         </p>
       </div>
     </aside>

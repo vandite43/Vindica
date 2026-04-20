@@ -1,4 +1,4 @@
-export function VindicaMark({ size = 32, variant = 'default' }: { size?: number; variant?: 'default' | 'dark' }) {
+﻿export function VyndicoMark({ size = 32, variant = 'default' }: { size?: number; variant?: 'default' | 'dark' }) {
   const fill = variant === 'dark' ? '#8B72E8' : '#5B3FD4';
   const stroke = variant === 'dark' ? '#8B72E8' : '#5B3FD4';
   return (

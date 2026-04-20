@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 import { useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { VindicaLogo } from '@/components/layout/VindicaLogo';
+import { VyndicoLogo } from '@/components/layout/VyndicoLogo';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -69,7 +69,7 @@ function LoginForm() {
       <Card className="w-full max-w-md shadow-xl" style={{ backgroundColor: '#F8F7FF' }}>
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
-            <VindicaLogo />
+            <VyndicoLogo />
           </div>
           <CardDescription>Sign in to your practice account</CardDescription>
         </CardHeader>

@@ -3,35 +3,18 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { protect } from '@/lib/auth/protect';
 import { writeAuditLog } from '@/lib/audit';
-
-const DEFAULT_PAYERS = [
-  { payerName: 'Delta Dental',       payerId: 'DELTA001' },
-  { payerName: 'Cigna',              payerId: 'CIGNA001' },
-  { payerName: 'Aetna',              payerId: 'AETNA001' },
-  { payerName: 'MetLife',            payerId: 'METLIFE001' },
-  { payerName: 'UnitedHealthcare',   payerId: 'UHC001' },
-  { payerName: 'Guardian',           payerId: 'GUARD001' },
-  { payerName: 'Humana',             payerId: 'HUMANA001' },
-  { payerName: 'BCBS',               payerId: 'BCBS001' },
-  { payerName: 'Medicaid (State)',    payerId: 'MCAID001' },
-  { payerName: 'Medicare Advantage', payerId: 'MCARE001' },
-];
+import { createProvider, listProviders } from '@/lib/db/providers';
 
 export async function GET(req: NextRequest) {
   try {
-    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER']);
     if (guard) return guard;
 
     const session = await auth();
-    const practice = await prisma.practice.findUnique({ where: { userId: session!.user.id } });
+    const practice = await prisma.practice.findFirst({ where: { OR: [{ userId: session!.user.id }, { members: { some: { id: session!.user.id } } }] } });
     if (!practice) return NextResponse.json({ error: 'Practice not found' }, { status: 404 });
 
-    const providers = await prisma.provider.findMany({
-      where: { practiceId: practice.id },
-      include: { credentialing: true, events: { orderBy: { createdAt: 'desc' } } },
-      orderBy: { lastName: 'asc' },
-    });
-
+    const providers = await listProviders(practice.id);
     return NextResponse.json(providers);
   } catch (err) {
     console.error('[providers GET]', err);
@@ -41,31 +24,24 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const guard = await protect(req, ['ADMIN', 'OFFICE_MANAGER']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER']);
     if (guard) return guard;
 
     const session = await auth();
-    const practice = await prisma.practice.findUnique({ where: { userId: session!.user.id } });
+    const practice = await prisma.practice.findFirst({ where: { OR: [{ userId: session!.user.id }, { members: { some: { id: session!.user.id } } }] } });
     if (!practice) return NextResponse.json({ error: 'Practice not found' }, { status: 404 });
 
     const body = await req.json();
     const { firstName, lastName, credentials, npiType1, licenseNumber, licenseState,
             licenseExpiry, deaNumber, specialty, startDate } = body;
 
-    const provider = await prisma.provider.create({
-      data: {
-        practiceId: practice.id,
-        firstName, lastName, credentials, npiType1,
-        licenseNumber, licenseState,
-        licenseExpiry: new Date(licenseExpiry),
-        deaNumber: deaNumber || null,
-        specialty,
-        startDate: new Date(startDate),
-        credentialing: {
-          create: DEFAULT_PAYERS.map(p => ({ ...p, status: 'NOT_STARTED' as const })),
-        },
-      },
-      include: { credentialing: true, events: true },
+    const provider = await createProvider(practice.id, {
+      firstName, lastName, credentials, npiType1,
+      licenseNumber, licenseState,
+      licenseExpiry: new Date(licenseExpiry),
+      deaNumber: deaNumber || null,
+      specialty,
+      startDate: new Date(startDate),
     });
 
     await writeAuditLog({

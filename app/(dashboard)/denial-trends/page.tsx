@@ -1,8 +1,8 @@
-import Header from '@/components/layout/Header';
+﻿import Header from '@/components/layout/Header';
 import DenialTrendsDashboard from '@/components/denial-trends/DenialTrendsDashboard';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Denial Trends — Vindica' };
+export const metadata = { title: 'Denial Trends — Vyndico' };
 
 export default function DenialTrendsPage() {
   return (

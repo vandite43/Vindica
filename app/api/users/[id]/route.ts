@@ -3,10 +3,11 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { protect } from '@/lib/auth/protect';
 import { writeAuditLog } from '@/lib/audit';
+import { notifyRoleChanged, notifyMfaDisabled } from '@/lib/notifications/send';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const guard = await protect(req, ['ADMIN']);
+    const guard = await protect(req, ['SUPER_ADMIN', 'ADMIN']);
     if (guard) return guard;
 
     const session = await auth();
@@ -23,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     // Validate target user belongs to the same practice as the requesting admin
-    const practice = await prisma.practice.findUnique({ where: { userId: session!.user.id } });
+    const practice = await prisma.practice.findFirst({ where: { OR: [{ userId: session!.user.id }, { members: { some: { id: session!.user.id } } }] } });
     if (!practice) {
       return NextResponse.json({ error: 'Practice not found' }, { status: 404 });
     }
@@ -34,9 +35,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Access denied.' }, { status: 403 });
     }
 
+    const { mfaEnabled } = body;
+
+    const VALID_ROLES = ['SUPER_ADMIN', 'ADMIN', 'OFFICE_MANAGER', 'BILLER'];
+    if (role !== undefined && !VALID_ROLES.includes(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
+
     const data: Record<string, unknown> = {};
-    if (role !== undefined)     data.role = role;
-    if (isActive !== undefined) data.isActive = isActive;
+    if (role !== undefined)       data.role = role;
+    if (isActive !== undefined)   data.isActive = isActive;
+    if (mfaEnabled !== undefined) data.mfaEnabled = mfaEnabled;
 
     const updated = await prisma.user.update({ where: { id }, data });
 
@@ -49,6 +58,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         outcome:   'SUCCESS',
         details:   `Role changed from ${target.role} to ${role}`,
       });
+
+      if (practice) {
+        notifyRoleChanged(
+          practice.id,
+          target.id,
+          target.email,
+          target.role,
+          role,
+          session!.user.email!,
+        ).catch(() => {});
+      }
+    }
+
+    // Notify admin if MFA was explicitly disabled on an account
+    if (mfaEnabled === false && target.mfaEnabled !== false && practice) {
+      notifyMfaDisabled(practice.id, target.id, target.email).catch(() => {});
     }
 
     return NextResponse.json({

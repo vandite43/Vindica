@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -136,7 +136,7 @@ const CHECKLIST_STEPS = [
     items: [
       { id: 'written_conf',  label: 'Receive written confirmation from each payer' },
       { id: 'eff_date',      label: 'Confirm effective date of credentialing' },
-      { id: 'update_vindica',label: 'Update provider record in Vindica' },
+      { id: 'update_Vyndico',label: 'Update provider record in Vyndico' },
       { id: 'no_submit',     label: 'Do not submit claims under this provider until effective date is confirmed' },
     ],
   },

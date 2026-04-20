@@ -1,8 +1,8 @@
-import { Suspense } from 'react';
+﻿import { Suspense } from 'react';
 import Header from '@/components/layout/Header';
 import DenialDecoderClient from '@/components/denial-decoder/DenialDecoderClient';
 
-export const metadata = { title: 'Denial Decoder — Vindica' };
+export const metadata = { title: 'Denial Decoder — Vyndico' };
 
 export default function DenialDecoderPage() {
   return (
