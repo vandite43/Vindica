@@ -164,7 +164,6 @@ async function main() {
 
   console.log('Created 8 payers');
 
-  const practice = user.practice;
   if (!practice) {
     console.error('No practice found');
     return;
