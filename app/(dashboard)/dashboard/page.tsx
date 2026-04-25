@@ -115,8 +115,8 @@ export default async function DashboardPage() {
 
   const data = await getDashboardData(session.user.id);
   if (!data) {
-    console.error('[dashboard] No practice for userId:', session.user.id, '— redirecting to login');
-    redirect('/login');
+    console.error('[dashboard] No practice for userId:', session.user.id, '— redirecting to register');
+    redirect('/register');
   }
 
   return (
