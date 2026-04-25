@@ -642,7 +642,7 @@ Sunshine Family Dentistry`,
   console.log('Created appeals for denied claims');
 
   // ── Seed Providers ──────────────────────────────────────────────────────────
-  const providerPractice = user.practice!;
+  const providerPractice = practice;
   const existingProviders = await prisma.provider.count({ where: { practiceId: providerPractice.id } });
 
   if (existingProviders === 0) {
