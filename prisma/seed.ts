@@ -11,7 +11,8 @@ async function main() {
 
   // Create demo user
   const hashedPassword = await bcrypt.hash('demo1234', 12);
-  const user = await prisma.user.upsert({
+  // Upsert the owner user first (without practice, to avoid nested-create on re-runs)
+  let user = await prisma.user.upsert({
     where: { email: 'demo@claimguard.ai' },
     update: { mfaEnabled: false, role: 'SUPER_ADMIN' },
     create: {
@@ -20,22 +21,34 @@ async function main() {
       password: hashedPassword,
       mfaEnabled: false,
       role: 'SUPER_ADMIN',
-      practice: {
-        create: {
-          name: 'Sunshine Family Dentistry',
-          npi: '1234567890',
-          address: '123 Main Street, Dallas, TX 75201',
-          state: 'TX',
-        },
-      },
     },
-    include: { practice: true },
   });
+
+  // Upsert the practice (owner = demo user)
+  const practice = await prisma.practice.upsert({
+    where: { userId: user.id },
+    update: {},
+    create: {
+      name: 'Sunshine Family Dentistry',
+      npi: '1234567890',
+      address: '123 Main Street, Dallas, TX 75201',
+      state: 'TX',
+      userId: user.id,
+    },
+  });
+
+  // Always ensure the owner user has practiceId set (idempotent)
+  if (user.practiceId !== practice.id) {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { practiceId: practice.id },
+    });
+  }
 
   console.log('Created demo user:', user.email);
 
   // Create demo member accounts (one per role) linked to the same practice
-  const practiceId = user.practice!.id;
+  const practiceId = practice.id;
   const memberAccounts = [
     { email: 'demo.admin@claimguard.ai',    name: 'Alex Rivera',     role: 'ADMIN'          },
     { email: 'demo.office@claimguard.ai',   name: 'Morgan Lee',      role: 'OFFICE_MANAGER' },
