@@ -12,19 +12,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
-
-// Validate ENCRYPTION_KEY at module load time so the app fails fast
-// rather than crashing mid-request on first encrypt/decrypt call.
-// Tests must set a valid 32-byte ENCRYPTION_KEY in their environment.
-{
-  const raw = process.env.ENCRYPTION_KEY;
-  if (!raw) {
-    throw new Error('ENCRYPTION_KEY environment variable is not set.');
-  }
-  if (Buffer.byteLength(raw, 'utf8') !== 32) {
-    throw new Error(`ENCRYPTION_KEY must be exactly 32 bytes when UTF-8 encoded. Got ${Buffer.byteLength(raw, 'utf8')} bytes.`);
-  }
-}
 const IV_LENGTH = 12;      // 96-bit IV recommended for GCM
 const TAG_LENGTH = 16;     // 128-bit auth tag
 const PREFIX = 'enc:';
