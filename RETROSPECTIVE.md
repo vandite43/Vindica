@@ -16,6 +16,17 @@
 
 ## Completed Work
 
+### 2026-04-25 — Vercel Auth Loop Fix
+
+- **`session.maxAge` raised** (`lib/auth.ts`) — changed 900 s (15 min) to 86400 s (24 h).
+- **`debug-auth` endpoint deleted** (`app/api/debug-auth/route.ts`) — unauthenticated endpoint exposing bcrypt result, user role, and user ID; removed as critical info-disclosure risk.
+- **Env var checklist for Vercel** — see root cause notes below.
+
+**Root cause of 307 login loop on Vercel:**
+1. `AUTH_SECRET` (not `NEXTAUTH_SECRET`) must be set — NextAuth v5 uses `AUTH_SECRET`.
+2. `NEXTAUTH_URL` must be set to the exact production URL so cookie domain is correct.
+3. `DATABASE_URL` must point to a cloud Postgres instance, not `localhost`.
+
 ### 2026-04-19 — Full Security & Code Quality Remediation
 
 Comprehensive audit and fix of 30+ issues across four severity tiers. TypeScript compiles clean (`npx tsc --noEmit` passes).

@@ -108,10 +108,16 @@ async function getDashboardData(userId: string) {
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/login');
+  if (!session?.user?.id) {
+    console.error('[dashboard] No session — redirecting to login');
+    redirect('/login');
+  }
 
   const data = await getDashboardData(session.user.id);
-  if (!data) redirect('/login');
+  if (!data) {
+    console.error('[dashboard] No practice for userId:', session.user.id, '— redirecting to login');
+    redirect('/login');
+  }
 
   return (
     <div>

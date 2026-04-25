@@ -6,7 +6,7 @@ import { writeAuditLog } from './audit';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
-  session: { strategy: 'jwt', maxAge: 900 },
+  session: { strategy: 'jwt', maxAge: 86400 },
   pages: {
     signIn: '/login',
   },
