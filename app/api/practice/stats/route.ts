@@ -9,14 +9,18 @@ export async function GET(req: NextRequest) {
     if (guard) return guard;
 
     const session = await auth();
-    const practice = await prisma.practice.findFirst({
-      where: {
-        OR: [
-          { userId: session!.user.id },
-          { members: { some: { id: session!.user.id } } },
-        ],
-      },
-    });
+
+    // Two-step practice lookup — avoids OR + relation filter that trips DriverAdapterError
+    let practice = await prisma.practice.findUnique({ where: { userId: session!.user.id } });
+    if (!practice) {
+      const user = await prisma.user.findUnique({
+        where: { id: session!.user.id },
+        select: { practiceId: true },
+      });
+      if (user?.practiceId) {
+        practice = await prisma.practice.findUnique({ where: { id: user.practiceId } });
+      }
+    }
 
     if (!practice) {
       return NextResponse.json({ error: 'Practice not found' }, { status: 404 });
@@ -38,60 +42,45 @@ export async function GET(req: NextRequest) {
     }
     const serviceFilter = dateFilter ? { serviceDate: dateFilter } : {};
 
-    // Claim counts and sums in parallel
-    const [
-      totalClaims,
-      allAmounts,
-      approvedAmounts,
-      deniedAmounts,
-      pendingAmounts,
-      appeals,
-      activeUsers,
-      appealingCount,
-      oldUnpaidCount,
-    ] = await Promise.all([
-      prisma.claim.count({ where: { practiceId: pid, ...serviceFilter } }),
-
-      prisma.claim.aggregate({
-        where: { practiceId: pid, ...serviceFilter },
-        _sum: { totalAmount: true },
+    // Fetch claims and active users in parallel — use findMany + JS aggregation to
+    // avoid prisma.claim.aggregate() which causes DriverAdapterError with @prisma/adapter-pg
+    const [claims, activeUsers] = await Promise.all([
+      prisma.claim.findMany({
+        where: { practiceId: pid, deletedAt: null, ...serviceFilter },
+        select: { id: true, status: true, totalAmount: true, submittedAt: true },
       }),
-
-      prisma.claim.aggregate({
-        where: { practiceId: pid, status: { in: ['APPROVED', 'APPEAL_WON'] }, ...serviceFilter },
-        _sum: { totalAmount: true },
-      }),
-
-      prisma.claim.aggregate({
-        where: { practiceId: pid, status: { in: ['DENIED', 'APPEAL_LOST'] }, ...serviceFilter },
-        _sum: { totalAmount: true },
-      }),
-
-      prisma.claim.aggregate({
-        where: { practiceId: pid, status: { in: ['PENDING', 'SUBMITTED', 'APPEALING'] }, ...serviceFilter },
-        _sum: { totalAmount: true },
-      }),
-
-      prisma.appeal.findMany({
-        where: { claim: { practiceId: pid, ...serviceFilter }, status: { in: ['WON', 'LOST'] } },
-        select: { status: true, amountRecovered: true },
-      }),
-
       prisma.user.count({ where: { practiceId: pid, isActive: true } }),
-
-      prisma.claim.count({
-        where: { practiceId: pid, status: 'APPEALING', ...serviceFilter },
-      }),
-
-      prisma.claim.count({
-        where: {
-          practiceId: pid,
-          status: { in: ['PENDING', 'SUBMITTED'] },
-          submittedAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-          ...serviceFilter,
-        },
-      }),
     ]);
+
+    // Fetch appeals keyed by claimId (direct field, no relation filter)
+    const claimIds = claims.map(c => c.id);
+    const appeals = claimIds.length > 0
+      ? await prisma.appeal.findMany({
+          where: { claimId: { in: claimIds }, status: { in: ['WON', 'LOST'] } },
+          select: { status: true, amountRecovered: true },
+        })
+      : [];
+
+    // JS-side aggregation
+    const totalClaims    = claims.length;
+    const totalBilled    = claims.reduce((s, c) => s + c.totalAmount, 0);
+    const approvedRevenue = claims
+      .filter(c => c.status === 'APPROVED' || c.status === 'APPEAL_WON')
+      .reduce((s, c) => s + c.totalAmount, 0);
+    const deniedAmount   = claims
+      .filter(c => c.status === 'DENIED' || c.status === 'APPEAL_LOST')
+      .reduce((s, c) => s + c.totalAmount, 0);
+    const pendingAmount  = claims
+      .filter(c => c.status === 'PENDING' || c.status === 'SUBMITTED' || c.status === 'APPEALING')
+      .reduce((s, c) => s + c.totalAmount, 0);
+    const appealingCount = claims.filter(c => c.status === 'APPEALING').length;
+    const thirtyDaysAgo  = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const oldUnpaidCount = claims.filter(
+      c =>
+        (c.status === 'PENDING' || c.status === 'SUBMITTED') &&
+        c.submittedAt != null &&
+        c.submittedAt <= thirtyDaysAgo,
+    ).length;
 
     const wonAppeals  = appeals.filter(a => a.status === 'WON');
     const lostAppeals = appeals.filter(a => a.status === 'LOST');
@@ -111,10 +100,10 @@ export async function GET(req: NextRequest) {
         state:   practice.state,
       },
       totalClaims,
-      totalBilled:       allAmounts._sum.totalAmount     ?? 0,
-      approvedRevenue:   approvedAmounts._sum.totalAmount ?? 0,
-      deniedAmount:      deniedAmounts._sum.totalAmount   ?? 0,
-      pendingAmount:     pendingAmounts._sum.totalAmount  ?? 0,
+      totalBilled,
+      approvedRevenue,
+      deniedAmount,
+      pendingAmount,
       recoveredRevenue,
       appealWinRate,
       totalAppeals:   appeals.length,

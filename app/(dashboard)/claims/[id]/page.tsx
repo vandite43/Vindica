@@ -132,35 +132,46 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
   const [claim, setClaim] = useState<Claim | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [denialModal, setDenialModal] = useState<DenialModalState>({ open: false, reason: '', code: '' });
   const [updating, setUpdating] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchClaim() {
-      setLoading(true);
-      const res = await fetch(`/api/claims/${id}`);
-      if (!cancelled && res.ok) {
-        const data = await res.json();
-        setClaim(data);
-      }
-      if (!cancelled) setLoading(false);
-    }
-
-    fetchClaim();
-    return () => { cancelled = true; };
-  }, [id]);
 
   async function fetchClaim() {
     setLoading(true);
-    const res = await fetch(`/api/claims/${id}`);
-    if (res.ok) {
-      const data = await res.json();
-      setClaim(data);
+    setFetchError(null);
+    try {
+      const res = await fetch(`/api/claims/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setClaim(data);
+      } else {
+        setFetchError(res.status === 404 ? 'Claim not found.' : 'Failed to load claim. Please try again.');
+      }
+    } catch {
+      setFetchError('Failed to load claim. Please check your connection.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/claims/${id}`)
+      .then(async res => {
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setClaim(data);
+        } else {
+          if (!cancelled) setFetchError(res.status === 404 ? 'Claim not found.' : 'Failed to load claim. Please try again.');
+        }
+      })
+      .catch(() => { if (!cancelled) setFetchError('Failed to load claim. Please check your connection.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [id]);
 
   async function runAnalysis() {
     setAnalyzing(true);
@@ -241,7 +252,7 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  if (!claim) return <div className="p-6 text-gray-500">Claim not found.</div>;
+  if (!claim) return <div className="p-6 text-gray-500">{fetchError ?? 'Claim not found.'}</div>;
 
   const analysis = claim.aiAnalysis;
 

@@ -1,6 +1,8 @@
 ﻿import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY!);
+}
 
 export async function sendEmail({
   to,
@@ -11,7 +13,7 @@ export async function sendEmail({
   subject: string;
   text: string;
 }): Promise<void> {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'Vyndico <noreply@vyndico.com>',
     to,
     subject,

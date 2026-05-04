@@ -34,9 +34,15 @@ async function getDashboardData(userId: string) {
   thisMonth.setHours(0, 0, 0, 0);
 
   const claimsThisMonth = claims.filter(c => new Date(c.createdAt) >= thisMonth);
-  const deniedClaims = claims.filter(c => c.status === 'DENIED' || c.status === 'APPEAL_LOST');
+  // All denied outcomes (for denial rate metric)
+  const deniedClaims = claims.filter(
+    c => c.status === 'DENIED' || c.status === 'APPEALING' || c.status === 'APPEAL_LOST',
+  );
   const denialRate = claims.length > 0 ? (deniedClaims.length / claims.length) * 100 : 0;
-  const revenueAtRisk = deniedClaims.reduce((sum, c) => sum + c.totalAmount, 0);
+  // Only actionable unpaid amounts count as "at risk" (APPEAL_LOST is permanently gone)
+  const revenueAtRisk = claims
+    .filter(c => c.status === 'DENIED' || c.status === 'APPEALING')
+    .reduce((sum, c) => sum + c.totalAmount, 0);
   const recoveredAppeals = appeals.filter(a => a.status === 'WON');
   const recoveredRevenue = recoveredAppeals.reduce((sum, a) => sum + (a.amountRecovered || 0), 0);
 
@@ -53,7 +59,7 @@ async function getDashboardData(userId: string) {
       return d >= monthStart && d <= monthEnd;
     });
     const monthDenied = monthClaims.filter(
-      c => c.status === 'DENIED' || c.status === 'APPEAL_LOST'
+      c => c.status === 'DENIED' || c.status === 'APPEALING' || c.status === 'APPEAL_LOST'
     );
 
     trendData.push({
@@ -72,7 +78,7 @@ async function getDashboardData(userId: string) {
       payerMap[claim.payerName] = { name: claim.payerName, total: 0, denied: 0 };
     }
     payerMap[claim.payerName].total++;
-    if (claim.status === 'DENIED' || claim.status === 'APPEAL_LOST') {
+    if (claim.status === 'DENIED' || claim.status === 'APPEALING' || claim.status === 'APPEAL_LOST') {
       payerMap[claim.payerName].denied++;
     }
   }

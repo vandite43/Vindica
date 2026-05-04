@@ -12,7 +12,9 @@
 
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 const FROM   = process.env.RESEND_FROM_EMAIL ?? 'alerts@Vyndico.ai';
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
@@ -155,7 +157,7 @@ export async function sendEmail({
       timestamp: new Date(),
     });
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: FROM,
       to,
       subject: `[Vyndico] ${subject}`,
@@ -278,7 +280,7 @@ export async function sendMfaEmail({
 </body>
 </html>`;
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: FROM,
       to,
       subject: '[Vyndico] Your verification code',

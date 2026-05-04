@@ -20,6 +20,7 @@ interface Payer {
 export default function NewClaimPage() {
   const router = useRouter();
   const [payers, setPayers] = useState<Payer[]>([]);
+  const [payersError, setPayersError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cdtCodes, setCdtCodes] = useState(['']);
   const [toothNumbers, setToothNumbers] = useState(['']);
@@ -41,9 +42,12 @@ export default function NewClaimPage() {
 
   useEffect(() => {
     fetch('/api/payers')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('Failed');
+        return r.json();
+      })
       .then(setPayers)
-      .catch(console.error);
+      .catch(() => setPayersError(true));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -168,6 +172,9 @@ export default function NewClaimPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {payersError && (
+                  <p className="text-xs text-red-500">Failed to load payers. Please refresh the page.</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Plan Type *</Label>

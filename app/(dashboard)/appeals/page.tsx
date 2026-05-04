@@ -27,11 +27,17 @@ interface Appeal {
 export default function AppealsPage() {
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     fetch('/api/appeals')
-      .then(r => r.json())
-      .then(data => { setAppeals(Array.isArray(data.appeals) ? data.appeals : []); setLoading(false); });
+      .then(r => {
+        if (!r.ok) throw new Error('Failed');
+        return r.json();
+      })
+      .then(data => { setAppeals(Array.isArray(data.appeals) ? data.appeals : []); })
+      .catch(() => setFetchError(true))
+      .finally(() => setLoading(false));
   }, []);
 
   const totalRecovered = appeals.reduce((sum, a) => sum + (a.amountRecovered || 0), 0);
@@ -87,6 +93,12 @@ export default function AppealsPage() {
                     ))}
                   </tr>
                 ))
+              ) : fetchError ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-12 text-center text-red-500">
+                    Failed to load appeals. Please refresh the page.
+                  </td>
+                </tr>
               ) : appeals.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center text-gray-500">

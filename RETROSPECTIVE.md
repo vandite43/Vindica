@@ -16,16 +16,54 @@
 
 ## Completed Work
 
-### 2026-04-25 — Vercel Auth Loop Fix
+### 2026-04-26 — Bug Fixes: KPI Accuracy, Stats 500, Resend Build Crash, QA Bug Sweep
+
+**KPI fixes (`app/(dashboard)/dashboard/page.tsx`):**
+- "Revenue at Risk" was including `APPEAL_LOST` claims (permanently lost, not at risk). Fixed to only include `DENIED` (appealable) and `APPEALING` (in-flight). Denial rate still counts all denied outcomes.
+- Monthly trend and payer breakdown denial counts updated to include `APPEALING` for consistency.
+
+**`/api/practice/stats` 500 error fixed:**
+- Root cause: `prisma.claim.aggregate({ _sum: ... })` and `practice.findFirst` with `OR` + `members: { some: ... }` relation filter both trigger `DriverAdapterError` in Prisma 7.5.0 + `@prisma/adapter-pg`.
+- Rewritten to use single `findMany` + JS aggregation (no `aggregate()` calls). Practice lookup changed to two-step (same pattern as dashboard page). Added `deletedAt: null` filter to exclude soft-deleted claims.
+
+**Resend build crash fixed (`lib/email.ts`, `lib/notifications/email.ts`):**
+- `new Resend(process.env.RESEND_API_KEY)` was at module level. During Vercel build, Resend throws `Missing API key` when the env var is absent. Fixed to lazy-initialize inside each send function via `getResend()`.
+
+**QA bug sweep — 6 verified bugs fixed:**
+1. `app/(auth)/login/page.tsx` — removed raw debug error strings shown to users on signIn failure; replaced with friendly message
+2. `app/(auth)/register/page.tsx` — added try-catch so loading state always clears on network error
+3. `app/(dashboard)/appeals/page.tsx` — added `.catch()` to fetch chain; added `fetchError` state with error row in table
+4. `app/(dashboard)/claims/new/page.tsx` — payer fetch now sets `payersError` state with visible error message below dropdown
+5. `app/(dashboard)/claims/[id]/page.tsx` — eliminated duplicate `fetchClaim` function; added `fetchError` state; `!claim` render now shows actual error vs generic "Claim not found" for 500/403
+6. Same file: useEffect-local fetch now has proper `.catch()` and `.finally()` with `cancelled` guard
+
+### 2026-04-26 — Vercel Auth Loop: Real Root Cause Found and Fixed
+
+**The actual root cause (confirmed via Playwright + source inspection):**
+
+In NextAuth v5 (`@auth/core@0.41.1`), the JWT is encrypted with HKDF using the **cookie name as the salt**. On HTTPS (Vercel), NextAuth sets the cookie as `__Secure-authjs.session-token`. On HTTP (localhost), it's `authjs.session-token`. The `getToken` helper from `next-auth/jwt` defaults to `secureCookie: false`, which means it looks for `authjs.session-token` and derives the HKDF key with that salt — both the cookie lookup and decryption fail silently on Vercel HTTPS, always returning `null`. The middleware then sees an unauthenticated request and redirects to `/login`, even though `/api/auth/session` returns a valid user (it uses the `auth()` function internally which handles the secure prefix automatically).
+
+**Evidence:**
+- `/api/auth/session` returned `{ user: { email: "demo@claimguard.ai", ... } }` — session valid ✓
+- Navigating to `/dashboard` in the same browser session redirected to `/login` — middleware blind ✓
+- Source: `@auth/core/src/jwt.ts` line 149: `cookieName = defaultCookies(secureCookie ?? false).sessionToken.name`, line 151: `salt = cookieName` — salt is the cookie name itself
+
+**Fix (`proxy.ts`):**
+```ts
+const secureCookie = req.nextUrl.protocol === 'https:';
+const token = await getToken({ req, secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET, secureCookie });
+```
+
+- Localhost (HTTP): `secureCookie = false` → looks for `authjs.session-token` → works ✓
+- Vercel (HTTPS): `secureCookie = true` → looks for `__Secure-authjs.session-token` with correct salt → works ✓
+
+**Verified:** Playwright confirmed clean login → `/dashboard` redirect on `vyndico.com` after deploy. Commit: `0bb5891`.
+
+### 2026-04-25 — Vercel Auth Loop (Prior Incomplete Fix)
 
 - **`session.maxAge` raised** (`lib/auth.ts`) — changed 900 s (15 min) to 86400 s (24 h).
 - **`debug-auth` endpoint deleted** (`app/api/debug-auth/route.ts`) — unauthenticated endpoint exposing bcrypt result, user role, and user ID; removed as critical info-disclosure risk.
-- **Env var checklist for Vercel** — see root cause notes below.
-
-**Root cause of 307 login loop on Vercel:**
-1. `AUTH_SECRET` (not `NEXTAUTH_SECRET`) must be set — NextAuth v5 uses `AUTH_SECRET`.
-2. `NEXTAUTH_URL` must be set to the exact production URL so cookie domain is correct.
-3. `DATABASE_URL` must point to a cloud Postgres instance, not `localhost`.
+- Note: env var guidance given here was correct but did not fix the loop — the real cause was the `secureCookie` flag (see 2026-04-26 entry above).
 
 ### 2026-04-19 — Full Security & Code Quality Remediation
 
