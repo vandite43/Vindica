@@ -25,6 +25,7 @@
 **`/api/practice/stats` 500 error fixed:**
 - Root cause: `prisma.claim.aggregate({ _sum: ... })` and `practice.findFirst` with `OR` + `members: { some: ... }` relation filter both trigger `DriverAdapterError` in Prisma 7.5.0 + `@prisma/adapter-pg`.
 - Rewritten to use single `findMany` + JS aggregation (no `aggregate()` calls). Practice lookup changed to two-step (same pattern as dashboard page). Added `deletedAt: null` filter to exclude soft-deleted claims.
+- **2026-05-16 follow-up fix:** `prisma.user.count()` was missed in the original fix — `count()` internally maps to `aggregate()` in Prisma 7 and triggers the same DriverAdapterError on Vercel. Replaced with `prisma.user.findMany({ select: { id: true } })` + `.length`.
 
 **Resend build crash fixed (`lib/email.ts`, `lib/notifications/email.ts`):**
 - `new Resend(process.env.RESEND_API_KEY)` was at module level. During Vercel build, Resend throws `Missing API key` when the env var is absent. Fixed to lazy-initialize inside each send function via `getResend()`.

@@ -43,14 +43,19 @@ export async function GET(req: NextRequest) {
     const serviceFilter = dateFilter ? { serviceDate: dateFilter } : {};
 
     // Fetch claims and active users in parallel — use findMany + JS aggregation to
-    // avoid prisma.claim.aggregate() which causes DriverAdapterError with @prisma/adapter-pg
-    const [claims, activeUsers] = await Promise.all([
+    // avoid prisma.claim.aggregate() and prisma.user.count() which both cause
+    // DriverAdapterError with @prisma/adapter-pg (count() maps to aggregate internally)
+    const [claims, activeUserRows] = await Promise.all([
       prisma.claim.findMany({
         where: { practiceId: pid, deletedAt: null, ...serviceFilter },
         select: { id: true, status: true, totalAmount: true, submittedAt: true },
       }),
-      prisma.user.count({ where: { practiceId: pid, isActive: true } }),
+      prisma.user.findMany({
+        where: { practiceId: pid, isActive: true },
+        select: { id: true },
+      }),
     ]);
+    const activeUsers = activeUserRows.length;
 
     // Fetch appeals keyed by claimId (direct field, no relation filter)
     const claimIds = claims.map(c => c.id);
